@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+.github
+
+# Dependencies
+node_modules
+
+# Build output
+dist
+build
+
+# Local environment files
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage
+
+# Misc
+README.md
+WARP.md
+.claude
