@@ -2,6 +2,21 @@ import { Request, Response } from 'express';
 import { query } from '../db';
 import { logger } from '../middleware/logger';
 
+// Helper to convert snake_case to camelCase
+const toCamelCase = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map(toCamelCase);
+  }
+  if (obj !== null && obj.constructor === Object) {
+    return Object.keys(obj).reduce((result, key) => {
+      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      result[camelKey] = toCamelCase(obj[key]);
+      return result;
+    }, {} as any);
+  }
+  return obj;
+};
+
 // Get all requests
 export const getAllRequests = async (req: Request, res: Response) => {
   try {
@@ -10,7 +25,7 @@ export const getAllRequests = async (req: Request, res: Response) => {
       ORDER BY created_at DESC
     `);
 
-    res.json({ requests: result.rows });
+    res.json({ requests: toCamelCase(result.rows) });
   } catch (error) {
     logger.error('Error fetching requests:', error);
     res.status(500).json({ error: 'Failed to fetch requests' });
@@ -37,8 +52,8 @@ export const getRequestById = async (req: Request, res: Response) => {
     );
 
     res.json({
-      request: requestResult.rows[0],
-      comments: commentsResult.rows,
+      request: toCamelCase(requestResult.rows[0]),
+      comments: toCamelCase(commentsResult.rows),
     });
   } catch (error) {
     logger.error('Error fetching request:', error);
@@ -67,7 +82,7 @@ export const createRequest = async (req: Request, res: Response) => {
       `, [result.rows[0].id, userId, 'created', { title }]);
     }
 
-    res.status(201).json({ request: result.rows[0] });
+    res.status(201).json({ request: toCamelCase(result.rows[0]) });
   } catch (error) {
     logger.error('Error creating request:', error);
     res.status(500).json({ error: 'Failed to create request' });
@@ -100,7 +115,7 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
       `, [id, userId, 'status_changed', { status }]);
     }
 
-    res.json({ request: result.rows[0] });
+    res.json({ request: toCamelCase(result.rows[0]) });
   } catch (error) {
     logger.error('Error updating request status:', error);
     res.status(500).json({ error: 'Failed to update request status' });
@@ -146,7 +161,7 @@ export const assignEngineer = async (req: Request, res: Response) => {
       `, [id, userId, 'assigned', { engineerId, engineerName, estimatedHours }]);
     }
 
-    res.json({ request: result.rows[0] });
+    res.json({ request: toCamelCase(result.rows[0]) });
   } catch (error) {
     logger.error('Error assigning engineer:', error);
     res.status(500).json({ error: 'Failed to assign engineer' });
@@ -168,7 +183,7 @@ export const addComment = async (req: Request, res: Response) => {
       RETURNING *
     `, [id, userId || null, userName, userRole, content]);
 
-    res.status(201).json({ comment: result.rows[0] });
+    res.status(201).json({ comment: toCamelCase(result.rows[0]) });
   } catch (error) {
     logger.error('Error adding comment:', error);
     res.status(500).json({ error: 'Failed to add comment' });

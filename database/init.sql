@@ -90,9 +90,12 @@ CREATE TRIGGER update_requests_updated_at BEFORE UPDATE ON requests
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Seed data: Create qAdmin user
+-- Seed data: Create users for each role
 INSERT INTO users (name, email, role, avatar_url) VALUES
-    ('qAdmin', 'qadmin@simflow.local', 'Admin', 'https://api.dicebear.com/7.x/avataaars/svg?seed=qAdmin');
+    ('qAdmin', 'qadmin@simflow.local', 'Admin', 'https://api.dicebear.com/7.x/avataaars/svg?seed=qAdmin'),
+    ('Alice User', 'alice@simflow.local', 'End-User', 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice'),
+    ('Bob Manager', 'bob@simflow.local', 'Manager', 'https://api.dicebear.com/7.x/avataaars/svg?seed=bob'),
+    ('Charlie Engineer', 'charlie@simflow.local', 'Engineer', 'https://api.dicebear.com/7.x/avataaars/svg?seed=charlie');
 
 -- Grant permissions
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO simflow_user;
