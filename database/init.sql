@@ -9,6 +9,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('Admin', 'Manager', 'Engineer', 'End-User')),
     avatar_url VARCHAR(512),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -26,6 +27,7 @@ CREATE TABLE requests (
         'Feasibility Review',
         'Resource Allocation',
         'Engineering Review',
+        'Discussion',
         'In Progress',
         'Completed',
         'Revision Requested',
@@ -90,12 +92,13 @@ CREATE TRIGGER update_requests_updated_at BEFORE UPDATE ON requests
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Seed data: Create users for each role
-INSERT INTO users (name, email, role, avatar_url) VALUES
-    ('qAdmin', 'qadmin@simflow.local', 'Admin', 'https://api.dicebear.com/7.x/avataaars/svg?seed=qAdmin'),
-    ('Alice User', 'alice@simflow.local', 'End-User', 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice'),
-    ('Bob Manager', 'bob@simflow.local', 'Manager', 'https://api.dicebear.com/7.x/avataaars/svg?seed=bob'),
-    ('Charlie Engineer', 'charlie@simflow.local', 'Engineer', 'https://api.dicebear.com/7.x/avataaars/svg?seed=charlie');
+-- Seed data: Create users for each role with default passwords
+-- qAdmin: admin123, Alice: user123, Bob: manager123, Charlie: engineer123
+INSERT INTO users (name, email, password_hash, role, avatar_url) VALUES
+    ('qAdmin', 'qadmin@simflow.local', '$2b$10$oTh9EogqkPkBWT.9Y0hEKOfW5Wfe2RdfTsucyJizYk1cN23VsY7ie', 'Admin', 'https://api.dicebear.com/7.x/avataaars/svg?seed=qAdmin'),
+    ('Alice User', 'alice@simflow.local', '$2b$10$lMDP35A/sQxhLCJbgVPGkOjPY9lRMUBMO7MzRRLHLkZJ2RX6e2mee', 'End-User', 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice'),
+    ('Bob Manager', 'bob@simflow.local', '$2b$10$tNgQPQGmKIVU6E467EKbIed/1Kqbh.D99q/izl2yZ6DSZoqfqmmUS', 'Manager', 'https://api.dicebear.com/7.x/avataaars/svg?seed=bob'),
+    ('Charlie Engineer', 'charlie@simflow.local', '$2b$10$ZqaYJK.tKOidGRV0OsSGtu9lUCt7J4.sWRKe2Zq8K9JnHv9y04ghy', 'Engineer', 'https://api.dicebear.com/7.x/avataaars/svg?seed=charlie');
 
 -- Grant permissions
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO simflow_user;

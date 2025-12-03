@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { logger } from './middleware/logger';
+import authRouter from './routes/auth';
 import requestsRouter from './routes/requests';
 import usersRouter from './routes/users';
 import projectsRouter from './routes/projects';
@@ -46,6 +47,7 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
+app.use('/api/auth', authRouter);
 app.use('/api/requests', requestsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/projects', projectsRouter);

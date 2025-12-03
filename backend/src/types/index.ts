@@ -5,6 +5,7 @@ export type RequestStatus =
   | 'Feasibility Review'
   | 'Resource Allocation'
   | 'Engineering Review'
+  | 'Discussion'
   | 'In Progress'
   | 'Completed'
   | 'Revision Requested'

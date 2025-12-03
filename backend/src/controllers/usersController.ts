@@ -1,23 +1,7 @@
 import { Request, Response } from 'express';
 import { query } from '../db';
 import { logger } from '../middleware/logger';
-
-// Helper to convert snake_case to camelCase
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const toCamelCase = <T>(obj: any): T => {
-  if (Array.isArray(obj)) {
-    return obj.map(v => toCamelCase(v)) as any;
-  }
-  if (obj !== null && typeof obj === 'object' && obj.constructor === Object) {
-    return Object.keys(obj).reduce((result, key) => {
-      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      (result as any)[camelKey] = toCamelCase((obj as any)[key]);
-      return result;
-    }, {} as T);
-  }
-  return obj as T;
-};
-/* eslint-enable @typescript-eslint/no-explicit-any */
+import { toCamelCase } from '../utils/caseConverter';
 
 // Get all users
 export const getAllUsers = async (req: Request, res: Response) => {
@@ -46,24 +30,15 @@ export const getAllUsers = async (req: Request, res: Response) => {
 // Get current user (for session)
 export const getCurrentUser = async (req: Request, res: Response) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const user = req.user;
 
-    if (!userId) {
-      // Return default qAdmin user
-      const result = await query(
-        "SELECT id, name, email, role, avatar_url FROM users WHERE email = 'qadmin@simflow.local'"
-      );
-
-      if (result.rows.length > 0) {
-        return res.json({ user: toCamelCase(result.rows[0]) });
-      }
-
-      return res.status(404).json({ error: 'User not found' });
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const result = await query(
       'SELECT id, name, email, role, avatar_url FROM users WHERE id = $1',
-      [userId]
+      [user.userId]
     );
 
     if (result.rows.length === 0) {

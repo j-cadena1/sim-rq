@@ -35,7 +35,7 @@ export const Dashboard: React.FC = () => {
     color: string;
   }
 
-  const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, color }) => (
+  const StatCard: React.FC<StatCardProps> = React.memo(({ label, value, icon: Icon, color }) => (
     <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 relative overflow-hidden group">
       <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity ${color}`}>
         <Icon size={64} />
@@ -45,7 +45,7 @@ export const Dashboard: React.FC = () => {
         <p className="text-3xl font-bold text-white mt-1">{value}</p>
       </div>
     </div>
-  );
+  ));
 
   return (
     <div className="space-y-8">
@@ -65,10 +65,19 @@ export const Dashboard: React.FC = () => {
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 h-[400px]">
           <h3 className="text-lg font-semibold text-white mb-6">Request Status Distribution</h3>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={statusData}>
-              <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+            <BarChart data={statusData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+              <XAxis
+                dataKey="name"
+                stroke="#64748b"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
               <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#fff' }}
                 itemStyle={{ color: '#fff' }}
                 cursor={{ fill: '#1e293b' }}

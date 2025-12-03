@@ -1,23 +1,7 @@
 import { Request, Response } from 'express';
-import { query } from '../db';
+import { query, getClient } from '../db';
 import { logger } from '../middleware/logger';
-
-// Helper to convert snake_case to camelCase
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const toCamelCase = <T>(obj: any): T => {
-  if (Array.isArray(obj)) {
-    return obj.map(v => toCamelCase(v)) as any;
-  }
-  if (obj !== null && typeof obj === 'object' && obj.constructor === Object) {
-    return Object.keys(obj).reduce((result, key) => {
-      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      (result as any)[camelKey] = toCamelCase((obj as any)[key]);
-      return result;
-    }, {} as T);
-  }
-  return obj as T;
-};
-/* eslint-enable @typescript-eslint/no-explicit-any */
+import { toCamelCase } from '../utils/caseConverter';
 
 // Get all projects
 export const getAllProjects = async (req: Request, res: Response) => {
@@ -178,24 +162,36 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
 
 // Update project hours (when allocating to a request)
 export const updateProjectHours = async (req: Request, res: Response) => {
+  const client = await getClient();
+
   try {
     const { id } = req.params;
     const { hoursToAdd } = req.body;
 
-    if (hoursToAdd === undefined || hoursToAdd < 0) {
-      return res.status(400).json({ error: 'Invalid hours value' });
+    if (typeof hoursToAdd !== 'number') {
+      return res.status(400).json({ error: 'hoursToAdd must be a number' });
     }
 
-    // Get current project
-    const projectResult = await query('SELECT * FROM projects WHERE id = $1', [id]);
+    // Start transaction
+    await client.query('BEGIN');
+
+    // Lock the project row for update to prevent concurrent modifications
+    const projectResult = await client.query(
+      'SELECT * FROM projects WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+
     if (projectResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Project not found' });
     }
 
     const currentProject = projectResult.rows[0];
     const newUsedHours = currentProject.used_hours + hoursToAdd;
 
+    // Check if we have enough hours
     if (newUsedHours > currentProject.total_hours) {
+      await client.query('ROLLBACK');
       return res.status(400).json({
         error: 'Insufficient hours in project bucket',
         available: currentProject.total_hours - currentProject.used_hours,
@@ -203,17 +199,36 @@ export const updateProjectHours = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await query(
-      'UPDATE projects SET used_hours = $1 WHERE id = $2 RETURNING *',
+    // Cannot have negative used hours
+    if (newUsedHours < 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: 'Cannot deallocate more hours than currently used',
+        currentUsed: currentProject.used_hours,
+        requested: hoursToAdd
+      });
+    }
+
+    // Update the hours
+    const result = await client.query(
+      'UPDATE projects SET used_hours = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
       [newUsedHours, id]
     );
 
+    // Commit transaction
+    await client.query('COMMIT');
+
     const project = toCamelCase(result.rows[0]);
-    logger.info(`Updated project ${id} hours: +${hoursToAdd}`);
+    logger.info(`Updated project ${id} hours: ${currentProject.used_hours}h -> ${newUsedHours}h (${hoursToAdd >= 0 ? '+' : ''}${hoursToAdd}h)`);
     res.json({ project });
   } catch (error) {
+    // Rollback on any error
+    await client.query('ROLLBACK');
     logger.error('Error updating project hours:', error);
     res.status(500).json({ error: 'Failed to update project hours' });
+  } finally {
+    // Always release the client back to the pool
+    client.release();
   }
 };
 

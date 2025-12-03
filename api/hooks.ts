@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from './client';
-import { SimRequest, Comment, User, RequestStatus, UserRole, Project, ProjectStatus, TimeEntry, TitleChangeRequest } from '../types';
+import { SimRequest, Comment, User, RequestStatus, UserRole, Project, ProjectStatus, TimeEntry, TitleChangeRequest, DiscussionRequest } from '../types';
 
 // Requests API
 export const useRequests = () => {
@@ -316,6 +316,72 @@ export const useDeleteProject = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+};
+
+// Discussion Requests API
+export const useDiscussionRequests = (requestId: string) => {
+  return useQuery({
+    queryKey: ['discussion-requests', requestId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ discussionRequests: DiscussionRequest[] }>(`/requests/${requestId}/discussion-requests`);
+      return data.discussionRequests;
+    },
+    enabled: !!requestId,
+  });
+};
+
+export const useCreateDiscussionRequest = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ requestId, reason, suggestedHours }: { requestId: string; reason: string; suggestedHours?: number }) => {
+      const response = await apiClient.post<{ discussionRequest: DiscussionRequest }>(`/requests/${requestId}/discussion-request`, {
+        reason,
+        suggestedHours,
+      });
+      return response.data.discussionRequest;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['requests', variables.requestId] });
+      queryClient.invalidateQueries({ queryKey: ['discussion-requests', variables.requestId] });
+    },
+  });
+};
+
+export const useReviewDiscussionRequest = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      requestId,
+      action,
+      managerResponse,
+      allocatedHours,
+    }: {
+      id: string;
+      requestId: string;
+      action: 'approve' | 'deny' | 'override';
+      managerResponse?: string;
+      allocatedHours?: number;
+    }) => {
+      const response = await apiClient.patch<{ message: string; allocatedHours?: number }>(
+        `/requests/discussion-requests/${id}/review`,
+        {
+          action,
+          managerResponse,
+          allocatedHours,
+        }
+      );
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['requests', variables.requestId] });
+      queryClient.invalidateQueries({ queryKey: ['discussion-requests', variables.requestId] });
     },
   });
 };

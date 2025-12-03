@@ -10,6 +10,7 @@ export enum RequestStatus {
   FEASIBILITY_REVIEW = 'Feasibility Review', // Manager reviewing
   RESOURCE_ALLOCATION = 'Resource Allocation', // Manager approved feasibility, assigning engineer
   ENGINEERING_REVIEW = 'Engineering Review', // Engineer accepting/rejecting assignment
+  DISCUSSION = 'Discussion', // Engineer requested discussion with manager
   IN_PROGRESS = 'In Progress', // Engineer working
   COMPLETED = 'Completed', // Work done
   REVISION_REQUESTED = 'Revision Requested', // User wants changes
@@ -76,6 +77,22 @@ export interface TitleChangeRequest {
   reviewedByName?: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface DiscussionRequest {
+  id: string;
+  requestId: string;
+  engineerId: string;
+  engineerName: string;
+  reason: string;
+  suggestedHours?: number;
+  status: 'Pending' | 'Approved' | 'Denied' | 'Override';
+  reviewedBy?: string;
+  reviewedByName?: string;
+  managerResponse?: string;
+  allocatedHours?: number;
+  createdAt: string;
+  reviewedAt?: string;
 }
 
 export interface SimRequest {

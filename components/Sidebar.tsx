@@ -1,11 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, List, Cpu, FolderOpen } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, List, Cpu, FolderOpen, LogOut } from 'lucide-react';
 import { useSimFlow } from '../context/SimFlowContext';
+import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
 
 export const Sidebar: React.FC = () => {
   const { currentUser } = useSimFlow();
+  const { logout } = useAuth();
 
   const getLinks = () => {
     const links = [
@@ -52,7 +54,7 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
+      <div className="p-4 border-t border-slate-800 space-y-3">
         <div className="flex items-center space-x-3 bg-slate-950 p-3 rounded-lg border border-slate-800">
           <img src={currentUser.avatar} alt="User" className="w-8 h-8 rounded-full bg-slate-700" />
           <div className="overflow-hidden">
@@ -60,6 +62,13 @@ export const Sidebar: React.FC = () => {
             <p className="text-xs text-slate-400 truncate">{currentUser.role}</p>
           </div>
         </div>
+        <button
+          onClick={logout}
+          className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors text-slate-400 hover:bg-red-900/20 hover:text-red-400 border border-transparent hover:border-red-900/30"
+        >
+          <LogOut size={20} />
+          <span className="font-medium">Sign Out</span>
+        </button>
       </div>
     </aside>
   );

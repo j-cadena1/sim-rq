@@ -1,23 +1,7 @@
 import { Request, Response } from 'express';
 import { query } from '../db';
 import { logger } from '../middleware/logger';
-
-// Helper to convert snake_case to camelCase
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const toCamelCase = <T>(obj: any): T => {
-  if (Array.isArray(obj)) {
-    return obj.map(v => toCamelCase(v)) as any;
-  }
-  if (obj !== null && typeof obj === 'object' && obj.constructor === Object) {
-    return Object.keys(obj).reduce((result, key) => {
-      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      (result as any)[camelKey] = toCamelCase((obj as any)[key]);
-      return result;
-    }, {} as T);
-  }
-  return obj as T;
-};
-/* eslint-enable @typescript-eslint/no-explicit-any */
+import { toCamelCase } from '../utils/caseConverter';
 
 // Get all requests
 export const getAllRequests = async (req: Request, res: Response) => {
@@ -423,5 +407,141 @@ export const addTimeEntry = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Error adding time entry:', error);
     res.status(500).json({ error: 'Failed to add time entry' });
+  }
+};
+
+// Create discussion request (engineer requests discussion with revised hours)
+export const createDiscussionRequest = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { reason, suggestedHours } = req.body;
+    const userId = req.headers['x-user-id'] as string;
+    const userName = req.headers['x-user-name'] as string || 'Unknown';
+
+    if (!reason || reason.trim().length < 5) {
+      return res.status(400).json({ error: 'Reason must be at least 5 characters' });
+    }
+
+    // Create discussion request
+    const result = await query(`
+      INSERT INTO discussion_requests (request_id, engineer_id, reason, suggested_hours, status)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [id, userId, reason.trim(), suggestedHours || null, 'Pending']);
+
+    // Update request status to Discussion
+    await query(`
+      UPDATE requests
+      SET status = 'Discussion', updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `, [id]);
+
+    // Log activity
+    await query(`
+      INSERT INTO activity_log (request_id, user_id, action, details)
+      VALUES ($1, $2, $3, $4::jsonb)
+    `, [id, userId, 'discussion_requested', JSON.stringify({ reason, suggestedHours })]);
+
+    res.status(201).json({ discussionRequest: toCamelCase(result.rows[0]) });
+  } catch (error) {
+    logger.error('Error creating discussion request:', error);
+    res.status(500).json({ error: 'Failed to create discussion request' });
+  }
+};
+
+// Get discussion requests for a specific request
+export const getDiscussionRequestsForRequest = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(`
+      SELECT dr.*, u.name as engineer_name, u2.name as reviewed_by_name
+      FROM discussion_requests dr
+      LEFT JOIN users u ON dr.engineer_id = u.id
+      LEFT JOIN users u2 ON dr.reviewed_by = u2.id
+      WHERE dr.request_id = $1
+      ORDER BY dr.created_at DESC
+    `, [id]);
+
+    res.json({ discussionRequests: toCamelCase(result.rows) });
+  } catch (error) {
+    logger.error('Error fetching discussion requests:', error);
+    res.status(500).json({ error: 'Failed to fetch discussion requests' });
+  }
+};
+
+// Review discussion request (manager approves/denies/overrides)
+export const reviewDiscussionRequest = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { action, managerResponse, allocatedHours } = req.body; // action: 'approve', 'deny', 'override'
+    const userId = req.headers['x-user-id'] as string;
+    const userName = req.headers['x-user-name'] as string || 'Unknown';
+
+    // Get the discussion request
+    const drResult = await query(
+      'SELECT * FROM discussion_requests WHERE id = $1',
+      [id]
+    );
+
+    if (drResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Discussion request not found' });
+    }
+
+    const discussionRequest = drResult.rows[0];
+    let status = 'Pending';
+    let finalHours = discussionRequest.suggested_hours;
+
+    if (action === 'approve') {
+      status = 'Approved';
+      finalHours = discussionRequest.suggested_hours;
+    } else if (action === 'deny') {
+      status = 'Denied';
+      finalHours = null; // Keep original hours
+    } else if (action === 'override') {
+      status = 'Override';
+      finalHours = allocatedHours;
+    }
+
+    // Update the discussion request
+    await query(`
+      UPDATE discussion_requests
+      SET status = $1, reviewed_by = $2, manager_response = $3,
+          allocated_hours = $4, reviewed_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+    `, [status, userId, managerResponse || null, finalHours, id]);
+
+    // Update the request: set status back to Engineering Review and update hours if approved/override
+    if (action === 'approve' || action === 'override') {
+      await query(`
+        UPDATE requests
+        SET estimated_hours = $1, allocated_hours = $1,
+            status = 'Engineering Review', updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+      `, [finalHours, discussionRequest.request_id]);
+    } else if (action === 'deny') {
+      // Denied - go back to Engineering Review with original hours
+      await query(`
+        UPDATE requests
+        SET status = 'Engineering Review', updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+      `, [discussionRequest.request_id]);
+    }
+
+    // Log activity
+    await query(`
+      INSERT INTO activity_log (request_id, user_id, action, details)
+      VALUES ($1, $2, $3, $4::jsonb)
+    `, [
+      discussionRequest.request_id,
+      userId,
+      `discussion_${action}`,
+      JSON.stringify({ allocatedHours: finalHours, response: managerResponse })
+    ]);
+
+    res.json({ message: `Discussion request ${action}ed`, allocatedHours: finalHours });
+  } catch (error) {
+    logger.error('Error reviewing discussion request:', error);
+    res.status(500).json({ error: 'Failed to review discussion request' });
   }
 };

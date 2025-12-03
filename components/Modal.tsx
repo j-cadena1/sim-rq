@@ -4,6 +4,7 @@ import { X, AlertTriangle } from 'lucide-react';
 interface ModalContextType {
   showConfirm: (title: string, message: string, onConfirm: () => void) => void;
   showPrompt: (title: string, message: string, onSubmit: (value: string) => void, defaultValue?: string) => void;
+  showDiscussionRequest: (currentHours: number, onSubmit: (reason: string, suggestedHours?: number) => void) => void;
   closeModal: () => void;
 }
 
@@ -21,7 +22,7 @@ interface ModalProviderProps {
   children: ReactNode;
 }
 
-type ModalType = 'confirm' | 'prompt' | null;
+type ModalType = 'confirm' | 'prompt' | 'discussionRequest' | null;
 
 interface ModalState {
   type: ModalType;
@@ -29,7 +30,9 @@ interface ModalState {
   message: string;
   onConfirm?: () => void;
   onSubmit?: (value: string) => void;
+  onDiscussionSubmit?: (reason: string, suggestedHours?: number) => void;
   defaultValue?: string;
+  currentHours?: number;
 }
 
 export const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {
@@ -53,12 +56,19 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {
     []
   );
 
+  const showDiscussionRequest = useCallback(
+    (currentHours: number, onSubmit: (reason: string, suggestedHours?: number) => void) => {
+      setModal({ type: 'discussionRequest', title: '', message: '', onDiscussionSubmit: onSubmit, currentHours });
+    },
+    []
+  );
+
   const closeModal = useCallback(() => {
     setModal({ type: null, title: '', message: '' });
   }, []);
 
   return (
-    <ModalContext.Provider value={{ showConfirm, showPrompt, closeModal }}>
+    <ModalContext.Provider value={{ showConfirm, showPrompt, showDiscussionRequest, closeModal }}>
       {children}
       {modal.type === 'confirm' && (
         <ConfirmModal
@@ -78,6 +88,16 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {
           defaultValue={modal.defaultValue || ''}
           onSubmit={value => {
             modal.onSubmit?.(value);
+            closeModal();
+          }}
+          onCancel={closeModal}
+        />
+      )}
+      {modal.type === 'discussionRequest' && (
+        <DiscussionRequestModal
+          currentHours={modal.currentHours || 0}
+          onSubmit={(reason, suggestedHours) => {
+            modal.onDiscussionSubmit?.(reason, suggestedHours);
             closeModal();
           }}
           onCancel={closeModal}
@@ -202,6 +222,142 @@ const PromptModal: React.FC<PromptModalProps> = ({
               className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
             >
               Submit
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Discussion Request Modal Component
+interface DiscussionRequestModalProps {
+  currentHours: number;
+  onSubmit: (reason: string, suggestedHours?: number) => void;
+  onCancel: () => void;
+}
+
+const DiscussionRequestModal: React.FC<DiscussionRequestModalProps> = ({
+  currentHours,
+  onSubmit,
+  onCancel,
+}) => {
+  const [reason, setReason] = useState('');
+  const [suggestedHours, setSuggestedHours] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (reason.trim().length < 5) {
+      setError('Reason must be at least 5 characters');
+      return;
+    }
+
+    const hours = suggestedHours.trim() ? Number(suggestedHours) : undefined;
+    if (suggestedHours.trim() && (isNaN(hours!) || hours! < 1)) {
+      setError('Please enter a valid number of hours (at least 1)');
+      return;
+    }
+
+    onSubmit(reason.trim(), hours);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-900 rounded-xl border border-slate-800 max-w-lg w-full shadow-2xl animate-scale-in">
+        <form onSubmit={handleSubmit}>
+          <div className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2">Request Discussion</h3>
+                <p className="text-slate-400 text-sm">Explain what you need to discuss with the manager</p>
+              </div>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="text-slate-400 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Reason */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Reason for Discussion <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={4}
+                  value={reason}
+                  onChange={e => {
+                    setReason(e.target.value);
+                    setError('');
+                  }}
+                  autoFocus
+                  placeholder="I don't think this is enough time because..."
+                />
+                <p className="text-xs text-slate-500 mt-1">Minimum 5 characters</p>
+              </div>
+
+              {/* Current Hours Display */}
+              <div className="bg-slate-950 border border-slate-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-400">Current Allocation:</span>
+                  <span className="text-lg font-bold text-white font-mono">{currentHours}h</span>
+                </div>
+              </div>
+
+              {/* Suggested Hours */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Suggested Hours (Optional)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={suggestedHours}
+                  onChange={e => {
+                    setSuggestedHours(e.target.value);
+                    setError('');
+                  }}
+                  placeholder="Leave empty to discuss without suggesting new hours"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Enter a number if you want to propose different hours
+                </p>
+              </div>
+
+              {error && (
+                <div className="bg-red-900/20 border border-red-700 rounded-lg p-3">
+                  <p className="text-sm text-red-400 flex items-center gap-2">
+                    <AlertTriangle size={16} />
+                    {error}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-3 p-6 pt-0">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
+            >
+              Send Request
             </button>
           </div>
         </form>

@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useSimFlow } from '../context/SimFlowContext';
 import { useModal } from './Modal';
 import { useToast } from './Toast';
-import { useRequest, useProject, useUpdateProjectHours, useDeleteRequest, useTimeEntries, useAddTimeEntry, useUpdateRequestTitle, useRequestTitleChange, useTitleChangeRequests, useReviewTitleChange } from '../api/hooks';
-import { RequestStatus, UserRole, TitleChangeRequest } from '../types';
+import { useRequest, useProject, useUpdateProjectHours, useDeleteRequest, useTimeEntries, useAddTimeEntry, useUpdateRequestTitle, useRequestTitleChange, useTitleChangeRequests, useReviewTitleChange, useDiscussionRequests, useCreateDiscussionRequest, useReviewDiscussionRequest } from '../api/hooks';
+import { RequestStatus, UserRole, TitleChangeRequest, DiscussionRequest } from '../types';
 import { validateComment } from '../utils/validation';
 import { CheckCircle, XCircle, Clock, UserPlus, ArrowLeft, MessageSquare, AlertTriangle, User as UserIcon, FolderOpen, Trash2, Timer, MoreVertical, Edit2, Check, X } from 'lucide-react';
 
@@ -12,7 +12,7 @@ export const RequestDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentUser, updateRequestStatus, assignEngineer, addComment, getUsersByRole } = useSimFlow();
-  const { showConfirm, showPrompt } = useModal();
+  const { showConfirm, showPrompt, showDiscussionRequest } = useModal();
   const { showToast } = useToast();
 
   const { data, isLoading, isError } = useRequest(id!);
@@ -28,6 +28,9 @@ export const RequestDetail: React.FC = () => {
   const requestTitleChangeMutation = useRequestTitleChange();
   const { data: titleChangeRequests = [] } = useTitleChangeRequests(id!);
   const reviewTitleChangeMutation = useReviewTitleChange();
+  const { data: discussionRequests = [] } = useDiscussionRequests(id!);
+  const createDiscussionRequestMutation = useCreateDiscussionRequest();
+  const reviewDiscussionRequestMutation = useReviewDiscussionRequest();
 
   const engineers = getUsersByRole(UserRole.ENGINEER);
 
@@ -121,6 +124,23 @@ export const RequestDetail: React.FC = () => {
   const handleEngineerComplete = () => {
     updateRequestStatus(request.id, RequestStatus.COMPLETED);
     showToast('Work marked as completed', 'success');
+  };
+
+  const handleRequestDiscussion = () => {
+    showDiscussionRequest(request.estimatedHours || 0, (reason, suggestedHours) => {
+      createDiscussionRequestMutation.mutate(
+        { requestId: request.id, reason, suggestedHours },
+        {
+          onSuccess: () => {
+            addComment(request.id, `DISCUSSION REQUESTED: ${reason}${suggestedHours ? ` (Suggested hours: ${suggestedHours})` : ''}`);
+            showToast('Discussion request sent to manager', 'success');
+          },
+          onError: (error: any) => {
+            showToast(error.response?.data?.error || 'Failed to request discussion', 'error');
+          },
+        }
+      );
+    });
   };
 
   const handleRevisionRequest = () => {
@@ -331,6 +351,151 @@ export const RequestDetail: React.FC = () => {
   // --- RENDER HELPERS ---
 
   const renderManagerActions = () => {
+    // Discussion Request Review
+    if (request.status === RequestStatus.DISCUSSION) {
+      const pendingDiscussion = discussionRequests.find(dr => dr.status === 'Pending');
+
+      if (pendingDiscussion) {
+        return (
+          <div className="bg-slate-900 p-4 rounded-lg border border-blue-700 mt-6">
+            <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+              <MessageSquare className="text-blue-400" size={20} />
+              Discussion Request from Engineer
+            </h3>
+
+            <div className="bg-slate-950 p-4 rounded-lg mb-4">
+              <p className="text-sm text-slate-400 mb-2">
+                <strong className="text-white">{pendingDiscussion.engineerName}</strong> requested discussion:
+              </p>
+              <p className="text-white mb-3">{pendingDiscussion.reason}</p>
+
+              <div className="flex items-center justify-between text-sm border-t border-slate-800 pt-3">
+                <span className="text-slate-400">Current Hours:</span>
+                <span className="font-mono text-white">{request.estimatedHours || 0}h</span>
+              </div>
+
+              {pendingDiscussion.suggestedHours && (
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-slate-400">Engineer Suggests:</span>
+                  <span className="font-mono text-green-400 font-bold">{pendingDiscussion.suggestedHours}h</span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              {pendingDiscussion.suggestedHours && (
+                <button
+                  onClick={() => {
+                    showConfirm(
+                      'Approve Suggested Hours',
+                      `Accept the engineer's suggestion of ${pendingDiscussion.suggestedHours} hours?`,
+                      () => {
+                        reviewDiscussionRequestMutation.mutate(
+                          {
+                            id: pendingDiscussion.id,
+                            requestId: request.id,
+                            action: 'approve',
+                          },
+                          {
+                            onSuccess: () => {
+                              showToast('Discussion approved - hours updated', 'success');
+                            },
+                            onError: (error: any) => {
+                              showToast(error.response?.data?.error || 'Failed to approve discussion', 'error');
+                            },
+                          }
+                        );
+                      }
+                    );
+                  }}
+                  disabled={reviewDiscussionRequestMutation.isPending}
+                  className="w-full bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <CheckCircle size={16} /> Approve Suggested Hours ({pendingDiscussion.suggestedHours}h)
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  showPrompt(
+                    'Set Custom Hours',
+                    `Enter the number of hours you want to allocate:\n\nCurrent: ${request.estimatedHours}h\nSuggested: ${pendingDiscussion.suggestedHours || 'None'}h`,
+                    (hoursStr) => {
+                      const hours = Number(hoursStr);
+                      if (isNaN(hours) || hours < 1) {
+                        showToast('Please enter a valid number of hours (at least 1)', 'error');
+                        return;
+                      }
+
+                      showPrompt(
+                        'Response to Engineer',
+                        'Optional: Add a message to the engineer about your decision:',
+                        (response) => {
+                          reviewDiscussionRequestMutation.mutate(
+                            {
+                              id: pendingDiscussion.id,
+                              requestId: request.id,
+                              action: 'override',
+                              allocatedHours: hours,
+                              managerResponse: response.trim() || undefined,
+                            },
+                            {
+                              onSuccess: () => {
+                                showToast(`Hours updated to ${hours}h`, 'success');
+                              },
+                              onError: (error: any) => {
+                                showToast(error.response?.data?.error || 'Failed to update hours', 'error');
+                              },
+                            }
+                          );
+                        },
+                        ''
+                      );
+                    },
+                    String(pendingDiscussion.suggestedHours || request.estimatedHours || '')
+                  );
+                }}
+                disabled={reviewDiscussionRequestMutation.isPending}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+              >
+                Set Custom Hours
+              </button>
+
+              <button
+                onClick={() => {
+                  showConfirm(
+                    'Deny Discussion Request',
+                    `Keep the original allocation of ${request.estimatedHours}h and send back to Engineering Review?`,
+                    () => {
+                      reviewDiscussionRequestMutation.mutate(
+                        {
+                          id: pendingDiscussion.id,
+                          requestId: request.id,
+                          action: 'deny',
+                        },
+                        {
+                          onSuccess: () => {
+                            showToast('Discussion denied - keeping original hours', 'success');
+                          },
+                          onError: (error: any) => {
+                            showToast(error.response?.data?.error || 'Failed to deny discussion', 'error');
+                          },
+                        }
+                      );
+                    }
+                  );
+                }}
+                disabled={reviewDiscussionRequestMutation.isPending}
+                className="w-full bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <XCircle size={16} /> Deny - Keep Original Hours
+              </button>
+            </div>
+          </div>
+        );
+      }
+    }
+
     if (request.status === RequestStatus.REVISION_APPROVAL) {
       return (
         <div className="bg-slate-900 p-4 rounded-lg border border-yellow-700 mt-6">
@@ -476,7 +641,7 @@ export const RequestDetail: React.FC = () => {
              <button onClick={handleEngineerAccept} className="flex-1 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded">
                Accept Work
              </button>
-             <button className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded">
+             <button onClick={handleRequestDiscussion} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded">
                Request Discussion
              </button>
           </div>
@@ -756,8 +921,8 @@ export const RequestDetail: React.FC = () => {
           </form>
         </div>
 
-        {/* Time Tracking Section */}
-        {request.assignedTo && (
+        {/* Time Tracking Section - Only show after engineer accepts work */}
+        {request.assignedTo && (request.status === RequestStatus.IN_PROGRESS || request.status === RequestStatus.COMPLETED || request.status === RequestStatus.ACCEPTED) && (
           <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
               <Timer className="mr-2" size={20} /> Time Tracking

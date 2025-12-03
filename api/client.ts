@@ -12,20 +12,13 @@ export const apiClient = axios.create({
   timeout: 10000,
 });
 
-// Request interceptor to add user context
+// Request interceptor to add authentication token
 apiClient.interceptors.request.use((config) => {
-  // Get current user from sessionStorage (set by role switcher)
-  const currentUser = sessionStorage.getItem('sim-flow-current-user');
+  // Get JWT token from localStorage
+  const token = localStorage.getItem('sim-flow-token');
 
-  if (currentUser) {
-    try {
-      const user = JSON.parse(currentUser);
-      config.headers['X-User-Id'] = user.id;
-      config.headers['X-User-Name'] = user.name;
-      config.headers['X-User-Role'] = user.role;
-    } catch (e) {
-      console.error('Failed to parse current user:', e);
-    }
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
   }
 
   return config;
