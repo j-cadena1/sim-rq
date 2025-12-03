@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { logger } from './middleware/logger';
 import requestsRouter from './routes/requests';
 import usersRouter from './routes/users';
+import projectsRouter from './routes/projects';
 import pool from './db';
 
 // Load environment variables
@@ -47,9 +48,10 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/requests', requestsRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/projects', projectsRouter);
 
 // Error handling
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: express.Request, res: express.Response) => {
   logger.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });

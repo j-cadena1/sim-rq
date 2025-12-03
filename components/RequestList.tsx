@@ -3,7 +3,7 @@ import { useSimFlow } from '../context/SimFlowContext';
 import { RequestStatus, UserRole } from '../types';
 import { STATUS_COLORS, PRIORITY_COLORS } from '../constants';
 import { Link } from 'react-router-dom';
-import { Clock, User as UserIcon, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Clock, User as UserIcon, AlertTriangle, CheckCircle, Archive } from 'lucide-react';
 
 export const RequestList: React.FC = () => {
   const { requests, currentUser } = useSimFlow();
@@ -22,6 +22,58 @@ export const RequestList: React.FC = () => {
     return true;
   });
 
+  // Separate active and archived requests (archived = older than 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const activeRequests = filteredRequests.filter(req => new Date(req.createdAt) >= thirtyDaysAgo);
+  const archivedRequests = filteredRequests.filter(req => new Date(req.createdAt) < thirtyDaysAgo);
+
+  const renderRequestCard = (req: typeof filteredRequests[0]) => (
+    <Link
+      key={req.id}
+      to={`/requests/${req.id}`}
+      className="block bg-slate-900 hover:bg-slate-800/80 border border-slate-800 hover:border-blue-500/50 rounded-xl p-5 transition-all group"
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex-1">
+          <div className="flex items-center space-x-3 mb-1">
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(req.status)}`}>
+              {req.status}
+            </span>
+            <span className={`text-xs font-bold ${PRIORITY_COLORS[req.priority]}`}>
+              {req.priority} Priority
+            </span>
+          </div>
+          <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors">
+            {req.title}
+          </h3>
+        </div>
+        <div className="text-right text-xs text-slate-500">
+           {new Date(req.createdAt).toLocaleDateString()}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-sm text-slate-400 mt-4">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-1">
+            <UserIcon size={14} />
+            <span>{req.createdByName}</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <span className="bg-slate-800 px-2 py-0.5 rounded text-xs">{req.vendor}</span>
+          </div>
+        </div>
+        {req.assignedToName && (
+          <div className="flex items-center space-x-1 text-blue-400">
+            <CheckCircle size={14} />
+            <span>Assigned to {req.assignedToName}</span>
+          </div>
+        )}
+      </div>
+    </Link>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -31,62 +83,37 @@ export const RequestList: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid gap-4">
-        {filteredRequests.length === 0 ? (
-          <div className="text-center py-12 bg-slate-900 rounded-lg border border-slate-800">
-            <div className="bg-slate-800 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock className="text-slate-400" />
+      {/* Active Requests */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-white">Active Requests ({activeRequests.length})</h3>
+        <div className="grid gap-4">
+          {activeRequests.length === 0 ? (
+            <div className="text-center py-12 bg-slate-900 rounded-lg border border-slate-800">
+              <div className="bg-slate-800 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="text-slate-400" />
+              </div>
+              <h3 className="text-lg font-medium text-white">No active requests</h3>
+              <p className="text-slate-500">There are no active simulation requests visible to you.</p>
             </div>
-            <h3 className="text-lg font-medium text-white">No requests found</h3>
-            <p className="text-slate-500">There are no active simulation requests visible to you.</p>
-          </div>
-        ) : (
-          filteredRequests.map((req) => (
-            <Link 
-              key={req.id} 
-              to={`/requests/${req.id}`}
-              className="block bg-slate-900 hover:bg-slate-800/80 border border-slate-800 hover:border-blue-500/50 rounded-xl p-5 transition-all group"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-1">
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(req.status)}`}>
-                      {req.status}
-                    </span>
-                    <span className={`text-xs font-bold ${PRIORITY_COLORS[req.priority]}`}>
-                      {req.priority} Priority
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors">
-                    {req.title}
-                  </h3>
-                </div>
-                <div className="text-right text-xs text-slate-500">
-                   {new Date(req.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between text-sm text-slate-400 mt-4">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-1">
-                    <UserIcon size={14} />
-                    <span>{req.createdByName}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="bg-slate-800 px-2 py-0.5 rounded text-xs">{req.vendor}</span>
-                  </div>
-                </div>
-                {req.assignedToName && (
-                  <div className="flex items-center space-x-1 text-blue-400">
-                    <CheckCircle size={14} />
-                    <span>Assigned to {req.assignedToName}</span>
-                  </div>
-                )}
-              </div>
-            </Link>
-          ))
-        )}
+          ) : (
+            activeRequests.map(renderRequestCard)
+          )}
+        </div>
       </div>
+
+      {/* Archived Requests */}
+      {archivedRequests.length > 0 && (
+        <details className="bg-slate-900/50 rounded-xl border border-slate-800">
+          <summary className="cursor-pointer p-4 text-lg font-semibold text-slate-400 hover:text-white flex items-center gap-2">
+            <Archive size={20} />
+            Archived Requests ({archivedRequests.length})
+            <span className="text-xs text-slate-500 ml-2">(older than 30 days)</span>
+          </summary>
+          <div className="p-4 pt-0 space-y-3">
+            {archivedRequests.map(renderRequestCard)}
+          </div>
+        </details>
+      )}
     </div>
   );
 };

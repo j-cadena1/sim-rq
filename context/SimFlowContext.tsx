@@ -14,7 +14,7 @@ interface SimFlowContextType {
   switchUser: (role: UserRole) => void;
   requests: SimRequest[];
   isLoadingRequests: boolean;
-  addRequest: (title: string, description: string, vendor: string, priority: 'Low' | 'Medium' | 'High') => void;
+  addRequest: (title: string, description: string, vendor: string, priority: 'Low' | 'Medium' | 'High', projectId: string) => void;
   updateRequestStatus: (id: string, status: RequestStatus) => void;
   assignEngineer: (id: string, engineerId: string, hours: number) => void;
   addComment: (requestId: string, content: string) => void;
@@ -95,9 +95,10 @@ export const SimFlowProvider: React.FC<{ children: ReactNode }> = ({ children })
     title: string,
     description: string,
     vendor: string,
-    priority: 'Low' | 'Medium' | 'High'
+    priority: 'Low' | 'Medium' | 'High',
+    projectId: string
   ) => {
-    createRequestMutation.mutate({ title, description, vendor, priority });
+    createRequestMutation.mutate({ title, description, vendor, priority, projectId });
   };
 
   const updateRequestStatus = (id: string, status: RequestStatus) => {
@@ -118,7 +119,7 @@ export const SimFlowProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const getUsersByRole = (role: UserRole) => {
     // Use API users if available, otherwise fall back to mock users
-    if (users.length > 0) {
+    if (users && users.length > 0) {
       return users.filter(u => u.role === role);
     }
     return MOCK_USERS.filter(u => u.role === role);

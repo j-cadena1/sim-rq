@@ -2,18 +2,24 @@ import React, { useState } from 'react';
 import { useSimFlow } from '../context/SimFlowContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './Toast';
+import { useProjects } from '../api/hooks';
 import { validateNewRequest } from '../utils/validation';
-import { Send, AlertCircle } from 'lucide-react';
+import { Send, AlertCircle, FolderOpen } from 'lucide-react';
+import { ProjectStatus } from '../types';
 
 export const NewRequest: React.FC = () => {
   const { addRequest } = useSimFlow();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { data: allProjects = [], isLoading: projectsLoading } = useProjects();
+
+  const approvedProjects = allProjects.filter(p => p.status === ProjectStatus.APPROVED && p.totalHours > p.usedHours);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [vendor, setVendor] = useState('FANUC');
   const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
+  const [projectId, setProjectId] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -21,13 +27,18 @@ export const NewRequest: React.FC = () => {
     setErrors({});
 
     const validationErrors = validateNewRequest(title, description);
+
+    if (!projectId) {
+      validationErrors.project = 'Please select a project';
+    }
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       showToast('Please fix the validation errors', 'error');
       return;
     }
 
-    addRequest(title, description, vendor, priority);
+    addRequest(title, description, vendor, priority, projectId);
     showToast('Request submitted successfully', 'success');
     navigate('/requests');
   };
@@ -57,6 +68,41 @@ export const NewRequest: React.FC = () => {
               <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
                 <AlertCircle size={14} />
                 {errors.title}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+              <FolderOpen size={16} />
+              Project (Hour Budget)
+            </label>
+            <select
+              className={`w-full bg-slate-950 border ${errors.project ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              value={projectId}
+              onChange={(e) => {
+                setProjectId(e.target.value);
+                if (errors.project) setErrors(prev => ({ ...prev, project: undefined }));
+              }}
+              disabled={projectsLoading}
+            >
+              <option value="">Select a project...</option>
+              {approvedProjects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name} ({project.code}) - {project.totalHours - project.usedHours}h available
+                </option>
+              ))}
+            </select>
+            {errors.project && (
+              <p className="mt-1 text-sm text-red-400 flex items-center gap-1">
+                <AlertCircle size={14} />
+                {errors.project}
+              </p>
+            )}
+            {approvedProjects.length === 0 && !projectsLoading && (
+              <p className="mt-1 text-sm text-yellow-400 flex items-center gap-1">
+                <AlertCircle size={14} />
+                No projects with available hours. Please create or request a project first.
               </p>
             )}
           </div>

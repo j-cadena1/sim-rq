@@ -17,6 +17,7 @@ export const createRequestSchema = z.object({
   description: z.string().min(10).max(5000).transform(sanitize),
   vendor: z.string().min(1).max(100).transform(sanitize),
   priority: z.enum(['Low', 'Medium', 'High']),
+  projectId: z.string().uuid().optional(),
 });
 
 export const updateStatusSchema = z.object({
@@ -28,6 +29,7 @@ export const updateStatusSchema = z.object({
     'In Progress',
     'Completed',
     'Revision Requested',
+    'Revision Approval',
     'Accepted',
     'Denied',
   ]),

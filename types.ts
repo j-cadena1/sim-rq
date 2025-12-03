@@ -13,8 +13,15 @@ export enum RequestStatus {
   IN_PROGRESS = 'In Progress', // Engineer working
   COMPLETED = 'Completed', // Work done
   REVISION_REQUESTED = 'Revision Requested', // User wants changes
+  REVISION_APPROVAL = 'Revision Approval', // Manager reviewing revision request
   ACCEPTED = 'Accepted', // User accepted the completed work
   DENIED = 'Denied'
+}
+
+export enum ProjectStatus {
+  PENDING = 'Pending', // Awaiting management approval
+  APPROVED = 'Approved', // Active project
+  ARCHIVED = 'Archived' // Closed project
 }
 
 export interface User {
@@ -30,6 +37,45 @@ export interface Comment {
   authorRole: UserRole;
   content: string;
   timestamp: string;
+  createdAt?: string; // Backend uses createdAt
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  code: string; // Unique project code
+  totalHours: number;
+  usedHours: number;
+  status: ProjectStatus;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface TimeEntry {
+  id: string;
+  requestId: string;
+  engineerId: string;
+  engineerName: string;
+  hours: number;
+  description?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface TitleChangeRequest {
+  id: string;
+  requestId: string;
+  requestedBy: string;
+  requestedByName: string;
+  currentTitle: string;
+  proposedTitle: string;
+  status: 'Pending' | 'Approved' | 'Denied';
+  reviewedBy?: string;
+  reviewedByName?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface SimRequest {
@@ -48,6 +94,11 @@ export interface SimRequest {
   assignedToName?: string;
 
   estimatedHours?: number;
+  allocatedHours?: number; // Hours allocated from project bucket
+
+  projectId?: string; // Associated project
+  projectName?: string;
+  projectCode?: string;
 
   comments: Comment[];
 }
@@ -58,4 +109,34 @@ export const MOCK_USERS: User[] = [
   { id: 'm1', name: 'Bob Manager', role: UserRole.MANAGER, avatar: 'https://picsum.photos/seed/m1/200' },
   { id: 'e1', name: 'Charlie Engineer', role: UserRole.ENGINEER, avatar: 'https://picsum.photos/seed/e1/200' },
   { id: 'a1', name: 'Dave Admin', role: UserRole.ADMIN, avatar: 'https://picsum.photos/seed/a1/200' },
+];
+
+export const MOCK_REQUESTS: SimRequest[] = [
+  {
+    id: 'req1',
+    title: 'Analyze new gripper design',
+    description: 'We have a new gripper design and need to analyze its performance.',
+    vendor: 'FANUC',
+    status: RequestStatus.SUBMITTED,
+    priority: 'High',
+    createdBy: 'u1',
+    createdByName: 'Alice User',
+    createdAt: new Date().toISOString(),
+    comments: [],
+  },
+  {
+    id: 'req2',
+    title: 'Cycle time validation for cell 12',
+    description: 'Validate the cycle time for the new layout in cell 12.',
+    vendor: 'Siemens',
+    status: RequestStatus.IN_PROGRESS,
+    priority: 'Medium',
+    createdBy: 'u1',
+    createdByName: 'Alice User',
+    createdAt: new Date().toISOString(),
+    assignedTo: 'e1',
+    assignedToName: 'Charlie Engineer',
+    estimatedHours: 16,
+    comments: [],
+  },
 ];

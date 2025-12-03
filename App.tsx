@@ -11,6 +11,7 @@ import { Dashboard } from './components/Dashboard';
 import { NewRequest } from './components/NewRequest';
 import { RequestList } from './components/RequestList';
 import { RequestDetail } from './components/RequestDetail';
+import { Projects } from './components/Projects';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -54,6 +55,7 @@ const App: React.FC = () => {
                     <Route path="/requests" element={<RequestList />} />
                     <Route path="/requests/:id" element={<RequestDetail />} />
                     <Route path="/new" element={<NewRequest />} />
+                    <Route path="/projects" element={<Projects />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Layout>

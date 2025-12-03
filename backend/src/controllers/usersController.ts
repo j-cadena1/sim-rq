@@ -3,19 +3,21 @@ import { query } from '../db';
 import { logger } from '../middleware/logger';
 
 // Helper to convert snake_case to camelCase
-const toCamelCase = (obj: any): any => {
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const toCamelCase = <T>(obj: any): T => {
   if (Array.isArray(obj)) {
-    return obj.map(toCamelCase);
+    return obj.map(v => toCamelCase(v)) as any;
   }
-  if (obj !== null && obj.constructor === Object) {
+  if (obj !== null && typeof obj === 'object' && obj.constructor === Object) {
     return Object.keys(obj).reduce((result, key) => {
       const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      result[camelKey] = toCamelCase(obj[key]);
+      (result as any)[camelKey] = toCamelCase((obj as any)[key]);
       return result;
-    }, {} as any);
+    }, {} as T);
   }
-  return obj;
+  return obj as T;
 };
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // Get all users
 export const getAllUsers = async (req: Request, res: Response) => {
@@ -23,9 +25,9 @@ export const getAllUsers = async (req: Request, res: Response) => {
     const { role } = req.query;
 
     let queryText = 'SELECT id, name, email, role, avatar_url FROM users';
-    const params: any[] = [];
+    const params: string[] = [];
 
-    if (role) {
+    if (role && typeof role === 'string') {
       queryText += ' WHERE role = $1';
       params.push(role);
     }

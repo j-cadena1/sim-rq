@@ -1,28 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSimFlow } from '../context/SimFlowContext';
 import { useModal } from './Modal';
 import { useToast } from './Toast';
-import { RequestStatus, UserRole } from '../types';
+import { useRequest, useProject, useUpdateProjectHours, useDeleteRequest, useTimeEntries, useAddTimeEntry, useUpdateRequestTitle, useRequestTitleChange, useTitleChangeRequests, useReviewTitleChange } from '../api/hooks';
+import { RequestStatus, UserRole, TitleChangeRequest } from '../types';
 import { validateComment } from '../utils/validation';
-import { CheckCircle, XCircle, Clock, UserPlus, ArrowLeft, MessageSquare, AlertTriangle, User as UserIcon } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, UserPlus, ArrowLeft, MessageSquare, AlertTriangle, User as UserIcon, FolderOpen, Trash2, Timer, MoreVertical, Edit2, Check, X } from 'lucide-react';
 
 export const RequestDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { requests, currentUser, updateRequestStatus, assignEngineer, addComment, getUsersByRole } = useSimFlow();
+  const { currentUser, updateRequestStatus, assignEngineer, addComment, getUsersByRole } = useSimFlow();
   const { showConfirm, showPrompt } = useModal();
   const { showToast } = useToast();
 
-  const request = requests.find(r => r.id === id);
+  const { data, isLoading, isError } = useRequest(id!);
+  const request = data?.request;
+  const comments = data?.comments || [];
+
+  const { data: project } = useProject(request?.projectId || '');
+  const updateProjectHoursMutation = useUpdateProjectHours();
+  const deleteRequestMutation = useDeleteRequest();
+  const { data: timeEntries = [] } = useTimeEntries(id!);
+  const addTimeEntryMutation = useAddTimeEntry();
+  const updateRequestTitleMutation = useUpdateRequestTitle();
+  const requestTitleChangeMutation = useRequestTitleChange();
+  const { data: titleChangeRequests = [] } = useTitleChangeRequests(id!);
+  const reviewTitleChangeMutation = useReviewTitleChange();
+
   const engineers = getUsersByRole(UserRole.ENGINEER);
 
-  const [assignee, setAssignee] = useState(engineers[0]?.id || '');
+  const [assignee, setAssignee] = useState('');
   const [hours, setHours] = useState(8);
   const [comment, setComment] = useState('');
   const [commentError, setCommentError] = useState('');
+  const [timeHours, setTimeHours] = useState(1);
+  const [timeDescription, setTimeDescription] = useState('');
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
 
-  if (!request) return <div>Request not found</div>;
+  useEffect(() => {
+    if (engineers && engineers.length > 0 && !assignee) {
+      setAssignee(engineers[0].id);
+    }
+  }, [engineers, assignee]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (isError || !request) return <div>Request not found</div>;
 
   // --- ACTIONS ---
 
@@ -47,8 +86,31 @@ export const RequestDetail: React.FC = () => {
       showToast('Estimated hours must be at least 1', 'error');
       return;
     }
-    assignEngineer(request.id, assignee, hours);
-    showToast('Engineer assigned successfully', 'success');
+
+    if (!project) {
+      showToast('Project information not available', 'error');
+      return;
+    }
+
+    const availableHours = project.totalHours - project.usedHours;
+    if (hours > availableHours) {
+      showToast(`Insufficient project hours. Available: ${availableHours}h`, 'error');
+      return;
+    }
+
+    // Deduct hours from project
+    updateProjectHoursMutation.mutate(
+      { id: project.id, hoursToAdd: hours },
+      {
+        onSuccess: () => {
+          assignEngineer(request.id, assignee, hours);
+          showToast('Engineer assigned and hours allocated', 'success');
+        },
+        onError: () => {
+          showToast('Failed to allocate project hours', 'error');
+        },
+      }
+    );
   };
 
   const handleEngineerAccept = () => {
@@ -68,9 +130,33 @@ export const RequestDetail: React.FC = () => {
       (reason) => {
         if (reason.trim()) {
           addComment(request.id, `REVISION REQUESTED: ${reason}`);
-          updateRequestStatus(request.id, RequestStatus.REVISION_REQUESTED);
-          showToast('Revision requested', 'success');
+          updateRequestStatus(request.id, RequestStatus.REVISION_APPROVAL); // Goes to manager for approval
+          showToast('Revision requested - pending manager approval', 'success');
         }
+      }
+    );
+  };
+
+  const handleApproveRevision = () => {
+    showConfirm(
+      'Approve Revision',
+      'Send this request back to engineering for revisions?',
+      () => {
+        addComment(request.id, 'Manager approved revision request - returned to engineering');
+        updateRequestStatus(request.id, RequestStatus.IN_PROGRESS);
+        showToast('Revision approved - returned to engineering', 'success');
+      }
+    );
+  };
+
+  const handleDenyRevision = () => {
+    showConfirm(
+      'Deny Revision',
+      'Close this request as completed without changes?',
+      () => {
+        addComment(request.id, 'Manager denied revision request - marked as completed');
+        updateRequestStatus(request.id, RequestStatus.COMPLETED);
+        showToast('Revision denied - marked as completed', 'success');
       }
     );
   };
@@ -96,9 +182,181 @@ export const RequestDetail: React.FC = () => {
     showToast('Comment added', 'success');
   };
 
+  const handleDelete = () => {
+    showConfirm(
+      'Delete Request',
+      'Are you sure you want to permanently delete this request? This action cannot be undone.',
+      () => {
+        deleteRequestMutation.mutate(request.id, {
+          onSuccess: () => {
+            showToast('Request deleted successfully', 'success');
+            navigate('/requests');
+          },
+          onError: () => {
+            showToast('Failed to delete request', 'error');
+          },
+        });
+      }
+    );
+  };
+
+  const handleStartEditingTitle = () => {
+    setEditedTitle(request.title);
+    setIsEditingTitle(true);
+    setShowMenu(false);
+  };
+
+  const handleCancelEditingTitle = () => {
+    setIsEditingTitle(false);
+    setEditedTitle('');
+  };
+
+  const handleSaveTitle = () => {
+    if (!editedTitle.trim() || editedTitle.trim().length < 3) {
+      showToast('Title must be at least 3 characters', 'error');
+      return;
+    }
+
+    // Engineers request title changes, others can update directly
+    if (currentUser.role === UserRole.ENGINEER) {
+      requestTitleChangeMutation.mutate(
+        { id: request.id, proposedTitle: editedTitle },
+        {
+          onSuccess: () => {
+            showToast('Title change request submitted for approval', 'success');
+            setIsEditingTitle(false);
+            setEditedTitle('');
+          },
+          onError: (error: any) => {
+            showToast(error.response?.data?.error || 'Failed to submit title change request', 'error');
+          },
+        }
+      );
+    } else {
+      updateRequestTitleMutation.mutate(
+        { id: request.id, title: editedTitle },
+        {
+          onSuccess: () => {
+            showToast('Request title updated', 'success');
+            setIsEditingTitle(false);
+            setEditedTitle('');
+          },
+          onError: (error: any) => {
+            showToast(error.response?.data?.error || 'Failed to update title', 'error');
+          },
+        }
+      );
+    }
+  };
+
+  // Check if current user can edit the request title
+  const canEditTitle = () => {
+    if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER) {
+      return true;
+    }
+    if (currentUser.role === UserRole.USER && request.createdBy === currentUser.id) {
+      return true;
+    }
+    if (currentUser.role === UserRole.ENGINEER) {
+      return true; // Engineers can request title changes
+    }
+    return false;
+  };
+
+  const canDirectlyEditTitle = () => {
+    if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER) {
+      return true;
+    }
+    if (currentUser.role === UserRole.USER && request.createdBy === currentUser.id) {
+      return true;
+    }
+    return false;
+  };
+
+  const handleReviewTitleChange = (titleChangeRequest: TitleChangeRequest, approved: boolean) => {
+    const action = approved ? 'approve' : 'deny';
+    showConfirm(
+      `${approved ? 'Approve' : 'Deny'} Title Change`,
+      `Are you sure you want to ${action} this title change?\n\nCurrent: "${titleChangeRequest.currentTitle}"\nProposed: "${titleChangeRequest.proposedTitle}"`,
+      () => {
+        reviewTitleChangeMutation.mutate(
+          { id: titleChangeRequest.id, approved, requestId: request.id },
+          {
+            onSuccess: () => {
+              showToast(`Title change ${approved ? 'approved' : 'denied'}`, 'success');
+            },
+            onError: (error: any) => {
+              showToast(error.response?.data?.error || `Failed to ${action} title change`, 'error');
+            },
+          }
+        );
+      }
+    );
+  };
+
+  const canReviewTitleChange = () => {
+    // Managers/Admins can review, or the original requester
+    if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER) {
+      return true;
+    }
+    if (request.createdBy === currentUser.id) {
+      return true;
+    }
+    return false;
+  };
+
+  const handleLogTime = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (timeHours < 0.25) {
+      showToast('Time must be at least 0.25 hours', 'error');
+      return;
+    }
+
+    addTimeEntryMutation.mutate(
+      { requestId: request.id, hours: timeHours, description: timeDescription },
+      {
+        onSuccess: () => {
+          showToast('Time logged successfully', 'success');
+          setTimeHours(1);
+          setTimeDescription('');
+        },
+        onError: () => {
+          showToast('Failed to log time', 'error');
+        },
+      }
+    );
+  };
+
   // --- RENDER HELPERS ---
 
   const renderManagerActions = () => {
+    if (request.status === RequestStatus.REVISION_APPROVAL) {
+      return (
+        <div className="bg-slate-900 p-4 rounded-lg border border-yellow-700 mt-6">
+          <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+            <AlertTriangle className="text-yellow-400" size={20} />
+            Revision Request Approval
+          </h3>
+          <p className="text-sm text-slate-400 mb-4">The requester has requested revisions to the completed work.</p>
+          <div className="flex gap-3">
+            <button
+              onClick={handleApproveRevision}
+              className="flex-1 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded flex items-center justify-center gap-2"
+            >
+              <CheckCircle size={16} /> Approve Revision
+            </button>
+            <button
+              onClick={handleDenyRevision}
+              className="flex-1 bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded flex items-center justify-center gap-2"
+            >
+              <XCircle size={16} /> Deny Revision
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (request.status === RequestStatus.SUBMITTED || request.status === RequestStatus.REVISION_REQUESTED) {
       return (
         <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 mt-6">
@@ -133,13 +391,42 @@ export const RequestDetail: React.FC = () => {
     }
 
     if (request.status === RequestStatus.RESOURCE_ALLOCATION) {
+      const availableHours = project ? project.totalHours - project.usedHours : 0;
+
       return (
         <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 mt-6">
            <h3 className="text-white font-semibold mb-4">Resource Allocation</h3>
+
+           {/* Project Information */}
+           {project && (
+             <div className="mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+               <div className="flex items-center gap-2 mb-2">
+                 <FolderOpen size={16} className="text-blue-400" />
+                 <span className="text-sm font-medium text-white">{project.name}</span>
+                 <span className="text-xs text-slate-500">({project.code})</span>
+               </div>
+               <div className="flex justify-between text-xs">
+                 <span className="text-slate-400">Available Hours:</span>
+                 <span className={`font-mono font-semibold ${availableHours > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                   {availableHours}h / {project.totalHours}h
+                 </span>
+               </div>
+             </div>
+           )}
+
+           {!project && (
+             <div className="mb-4 p-3 bg-yellow-900/20 rounded-lg border border-yellow-700">
+               <p className="text-sm text-yellow-400 flex items-center gap-1">
+                 <AlertTriangle size={14} />
+                 No project selected for this request
+               </p>
+             </div>
+           )}
+
            <div className="space-y-4">
              <div>
                <label className="block text-xs text-slate-400 mb-1">Assign Engineer</label>
-               <select 
+               <select
                  className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white"
                  value={assignee}
                  onChange={(e) => setAssignee(e.target.value)}
@@ -148,16 +435,27 @@ export const RequestDetail: React.FC = () => {
                </select>
              </div>
              <div>
-               <label className="block text-xs text-slate-400 mb-1">Estimated Hours</label>
+               <label className="block text-xs text-slate-400 mb-1">
+                 Estimated Hours
+                 {project && availableHours > 0 && (
+                   <span className="ml-2 text-slate-500">(max: {availableHours}h)</span>
+                 )}
+               </label>
                <input
                  type="number"
                  className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white"
                  value={hours}
                  onChange={(e) => setHours(Number(e.target.value))}
+                 max={availableHours}
+                 min={1}
                />
              </div>
-             <button onClick={handleAssign} className="w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-medium">
-               Assign & Send to Engineering
+             <button
+               onClick={handleAssign}
+               disabled={!project || availableHours < 1 || updateProjectHoursMutation.isPending}
+               className="w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+             >
+               {updateProjectHoursMutation.isPending ? 'Allocating...' : 'Assign & Send to Engineering'}
              </button>
            </div>
         </div>
@@ -215,6 +513,16 @@ export const RequestDetail: React.FC = () => {
         </div>
       );
     }
+
+    if (request.status === RequestStatus.REVISION_APPROVAL) {
+      return (
+        <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 mt-6">
+          <h3 className="text-white font-semibold mb-3">Revision Requested</h3>
+          <p className="text-sm text-slate-400">Your revision request is pending manager approval.</p>
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -228,10 +536,78 @@ export const RequestDetail: React.FC = () => {
 
         <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
           <div className="flex justify-between items-start">
-             <h1 className="text-3xl font-bold text-white mb-2">{request.title}</h1>
-             <span className="px-3 py-1 bg-slate-800 rounded-full text-xs text-slate-300 font-mono border border-slate-700">
-               {request.id.slice(0, 8)}
-             </span>
+             {isEditingTitle ? (
+               <div className="flex-1 flex items-center gap-2 mb-2">
+                 <input
+                   type="text"
+                   value={editedTitle}
+                   onChange={(e) => setEditedTitle(e.target.value)}
+                   className="flex-1 text-3xl font-bold bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                   autoFocus
+                   onKeyDown={(e) => {
+                     if (e.key === 'Enter') handleSaveTitle();
+                     if (e.key === 'Escape') handleCancelEditingTitle();
+                   }}
+                 />
+                 <button
+                   onClick={handleSaveTitle}
+                   className="p-2 text-green-400 hover:text-green-300"
+                   title="Save"
+                 >
+                   <Check size={24} />
+                 </button>
+                 <button
+                   onClick={handleCancelEditingTitle}
+                   className="p-2 text-red-400 hover:text-red-300"
+                   title="Cancel"
+                 >
+                   <X size={24} />
+                 </button>
+               </div>
+             ) : (
+               <h1 className="text-3xl font-bold text-white mb-2">{request.title}</h1>
+             )}
+             <div className="flex items-center gap-2">
+               <span className="px-3 py-1 bg-slate-800 rounded-full text-xs text-slate-300 font-mono border border-slate-700">
+                 {request.id.slice(0, 8)}
+               </span>
+               {(canEditTitle() || currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER) && (
+                 <div className="relative" ref={menuRef}>
+                   <button
+                     onClick={() => setShowMenu(!showMenu)}
+                     className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                   >
+                     <MoreVertical size={20} className="text-slate-400 hover:text-white" />
+                   </button>
+                   {showMenu && (
+                     <div className="absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50">
+                       {canEditTitle() && (
+                         <button
+                           onClick={handleStartEditingTitle}
+                           className="w-full flex items-center gap-2 px-4 py-3 text-slate-300 hover:bg-slate-800 transition-colors rounded-t-lg"
+                         >
+                           <Edit2 size={16} />
+                           Edit Title
+                         </button>
+                       )}
+                       {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER) && (
+                         <button
+                           onClick={() => {
+                             setShowMenu(false);
+                             handleDelete();
+                           }}
+                           disabled={deleteRequestMutation.isPending}
+                           className="w-full flex items-center gap-2 px-4 py-3 text-red-400 hover:bg-red-600/20 transition-colors rounded-b-lg disabled:opacity-50 border-t border-slate-700"
+                         >
+                           <Trash2 size={16} />
+                           {deleteRequestMutation.isPending ? 'Deleting...' : 'Delete Request'}
+                         </button>
+                       )}
+                     </div>
+                   )}
+                 </div>
+               )}
+             </div>
           </div>
           <div className="flex items-center space-x-4 text-sm text-slate-400 mb-6">
             <span className="flex items-center"><UserIcon size={14} className="mr-1" /> {request.createdByName}</span>
@@ -245,18 +621,111 @@ export const RequestDetail: React.FC = () => {
           </div>
         </div>
 
+        {/* Title Change Requests Section */}
+        {canReviewTitleChange() && titleChangeRequests.filter(tcr => tcr.status === 'Pending').length > 0 && (
+          <div className="bg-amber-900/20 p-6 rounded-2xl border border-amber-700/50">
+            <h3 className="text-lg font-semibold text-amber-400 mb-4 flex items-center">
+              <AlertTriangle className="mr-2" size={20} /> Pending Title Change Request
+            </h3>
+            {titleChangeRequests
+              .filter(tcr => tcr.status === 'Pending')
+              .map(tcr => (
+                <div key={tcr.id} className="bg-slate-950/50 p-4 rounded-lg border border-slate-700 mb-4 last:mb-0">
+                  <div className="mb-3">
+                    <p className="text-xs text-slate-500 mb-1">Requested by {tcr.requestedByName}</p>
+                    <p className="text-xs text-slate-500 mb-3">{new Date(tcr.createdAt).toLocaleString()}</p>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-xs text-slate-500 font-semibold min-w-[80px] mt-1">Current:</span>
+                      <p className="text-slate-300 flex-1 line-through opacity-60">{tcr.currentTitle}</p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="text-xs text-green-500 font-semibold min-w-[80px] mt-1">Proposed:</span>
+                      <p className="text-white flex-1 font-semibold">{tcr.proposedTitle}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleReviewTitleChange(tcr, true)}
+                      disabled={reviewTitleChangeMutation.isPending}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Check size={16} />
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleReviewTitleChange(tcr, false)}
+                      disabled={reviewTitleChangeMutation.isPending}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <X size={16} />
+                      Deny
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Show status of approved/denied title changes to everyone */}
+        {titleChangeRequests.filter(tcr => tcr.status !== 'Pending').length > 0 && (
+          <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+              <Edit2 className="mr-2" size={20} /> Title Change History
+            </h3>
+            <div className="space-y-3">
+              {titleChangeRequests
+                .filter(tcr => tcr.status !== 'Pending')
+                .map(tcr => (
+                  <div key={tcr.id} className="bg-slate-950/50 p-3 rounded-lg border border-slate-700">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-xs text-slate-500">
+                          Requested by {tcr.requestedByName} • {new Date(tcr.createdAt).toLocaleDateString()}
+                        </p>
+                        {tcr.reviewedByName && (
+                          <p className="text-xs text-slate-500">
+                            {tcr.status === 'Approved' ? 'Approved' : 'Denied'} by {tcr.reviewedByName}
+                          </p>
+                        )}
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        tcr.status === 'Approved'
+                          ? 'bg-green-900/30 text-green-400 border border-green-900'
+                          : 'bg-red-900/30 text-red-400 border border-red-900'
+                      }`}>
+                        {tcr.status}
+                      </span>
+                    </div>
+                    <div className="text-sm">
+                      <p className="text-slate-400">
+                        <span className="line-through opacity-60">{tcr.currentTitle}</span>
+                        {tcr.status === 'Approved' && (
+                          <> → <span className="text-white font-medium">{tcr.proposedTitle}</span></>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
         {/* Comments Section */}
         <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
             <MessageSquare className="mr-2" size={20} /> Project History
           </h3>
           <div className="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2">
-            {request.comments.length === 0 && <p className="text-slate-500 text-sm italic">No comments yet.</p>}
-            {request.comments.map(c => (
+            {comments.length === 0 && <p className="text-slate-500 text-sm italic">No comments yet.</p>}
+            {comments.map(c => (
               <div key={c.id} className="bg-slate-950 p-3 rounded-lg border border-slate-800">
                 <div className="flex justify-between items-baseline mb-1">
                   <span className="font-semibold text-sm text-blue-400">{c.authorName} <span className="text-slate-600 text-xs">({c.authorRole})</span></span>
-                  <span className="text-xs text-slate-600">{new Date(c.timestamp).toLocaleString()}</span>
+                  <span className="text-xs text-slate-600">{new Date(c.createdAt).toLocaleString()}</span>
                 </div>
                 <p className="text-slate-300 text-sm">{c.content}</p>
               </div>
@@ -286,6 +755,101 @@ export const RequestDetail: React.FC = () => {
             )}
           </form>
         </div>
+
+        {/* Time Tracking Section */}
+        {request.assignedTo && (
+          <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+              <Timer className="mr-2" size={20} /> Time Tracking
+            </h3>
+
+            {/* Time Summary */}
+            <div className="mb-4 p-4 bg-slate-950 rounded-lg border border-slate-700">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-slate-400">Logged Hours:</span>
+                <span className="text-lg font-bold text-white">
+                  {timeEntries.reduce((sum, entry) => sum + Number(entry.hours), 0).toFixed(2)}h
+                </span>
+              </div>
+              {request.estimatedHours && (
+                <>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-slate-400">Estimated Hours:</span>
+                    <span className="text-sm font-medium text-slate-300">{request.estimatedHours}h</span>
+                  </div>
+                  <div className="w-full bg-slate-700 rounded-full h-2 mt-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        (timeEntries.reduce((sum, entry) => sum + Number(entry.hours), 0) / request.estimatedHours) > 1
+                          ? 'bg-red-500'
+                          : 'bg-blue-500'
+                      }`}
+                      style={{
+                        width: `${Math.min(
+                          (timeEntries.reduce((sum, entry) => sum + Number(entry.hours), 0) / request.estimatedHours) * 100,
+                          100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Time Entries List */}
+            <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
+              {timeEntries.length === 0 ? (
+                <p className="text-slate-500 text-sm italic">No time logged yet.</p>
+              ) : (
+                timeEntries.map((entry) => (
+                  <div key={entry.id} className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                    <div className="flex justify-between items-baseline mb-1">
+                      <span className="font-semibold text-sm text-blue-400">{entry.engineerName}</span>
+                      <span className="text-xs text-slate-600">{new Date(entry.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-slate-400">{entry.description || 'No description'}</p>
+                      <span className="text-sm font-bold text-white">{entry.hours}h</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Log Time Form - Only for assigned engineer */}
+            {currentUser.id === request.assignedTo && (
+              <form onSubmit={handleLogTime} className="space-y-3 pt-3 border-t border-slate-800">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Hours Worked</label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0.25"
+                    className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white"
+                    value={timeHours}
+                    onChange={(e) => setTimeHours(Number(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Description (optional)</label>
+                  <textarea
+                    className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-sm h-16 resize-none"
+                    placeholder="What did you work on?"
+                    value={timeDescription}
+                    onChange={(e) => setTimeDescription(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={addTimeEntryMutation.isPending}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-medium disabled:opacity-50"
+                >
+                  {addTimeEntryMutation.isPending ? 'Logging...' : 'Log Time'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
       </div>
 
       {/* RIGHT COLUMN: Status & Actions */}

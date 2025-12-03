@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, List, Cpu } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, List, Cpu, FolderOpen } from 'lucide-react';
 import { useSimFlow } from '../context/SimFlowContext';
 import { UserRole } from '../types';
 
@@ -11,6 +11,7 @@ export const Sidebar: React.FC = () => {
     const links = [
       { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
       { to: '/requests', icon: List, label: 'Requests' },
+      { to: '/projects', icon: FolderOpen, label: 'Projects' },
     ];
 
     if (currentUser.role === UserRole.USER) {

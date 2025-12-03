@@ -8,10 +8,13 @@ export type RequestStatus =
   | 'In Progress'
   | 'Completed'
   | 'Revision Requested'
+  | 'Revision Approval'
   | 'Accepted'
   | 'Denied';
 
 export type Priority = 'Low' | 'Medium' | 'High';
+
+export type ProjectStatus = 'Pending' | 'Approved' | 'Archived';
 
 export interface User {
   id: string;
@@ -19,6 +22,19 @@ export interface User {
   email: string;
   role: UserRole;
   avatar_url: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  code: string;
+  total_hours: number;
+  used_hours: number;
+  status: ProjectStatus;
+  created_by: string | null;
+  created_by_name: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -35,6 +51,8 @@ export interface SimRequest {
   assigned_to: string | null;
   assigned_to_name: string | null;
   estimated_hours: number | null;
+  allocated_hours: number | null;
+  project_id: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -54,6 +72,6 @@ export interface ActivityLog {
   request_id: string;
   user_id: string | null;
   action: string;
-  details: Record<string, any> | null;
+  details: Record<string, unknown> | null;
   created_at: Date;
 }
