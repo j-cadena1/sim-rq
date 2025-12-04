@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useSimFlow } from '../context/SimFlowContext';
+import { useSimFlow } from '../contexts/SimFlowContext';
 import { RequestStatus } from '../types';
 import { CHART_COLORS, STATUS_INDICATOR_COLORS } from '../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';

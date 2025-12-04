@@ -245,7 +245,7 @@ Host: postgres (within Docker network)
 Port: 5432
 Database: simflow
 User: simflow_user
-Password: SimFlow2024!Secure (change via .env)
+Password: SimFlow2025!Secure (change via .env)
 ```
 
 ### Tables Created
@@ -270,7 +270,7 @@ DB_HOST=postgres
 DB_PORT=5432
 DB_NAME=simflow
 DB_USER=simflow_user
-DB_PASSWORD=SimFlow2024!Secure
+DB_PASSWORD=SimFlow2025!Secure
 
 # Backend
 NODE_ENV=production

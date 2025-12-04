@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSimFlow } from '../context/SimFlowContext';
+import { useSimFlow } from '../contexts/SimFlowContext';
 import { UserRole } from '../types';
 import { Shield, User, Briefcase, Wrench } from 'lucide-react';
 

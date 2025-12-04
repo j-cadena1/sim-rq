@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useSimFlow } from '../context/SimFlowContext';
+import { useSimFlow } from '../contexts/SimFlowContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './Toast';
-import { useProjects } from '../api/hooks';
+import { useProjects } from '../lib/api/hooks';
 import { validateNewRequest } from '../utils/validation';
 import { Send, AlertCircle, FolderOpen } from 'lucide-react';
 import { ProjectStatus } from '../types';

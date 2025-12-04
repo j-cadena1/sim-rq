@@ -1,0 +1,9 @@
+# This directory is for SSL certificates
+# Place your SSL certificates here:
+# - fullchain.pem (or server.crt)
+# - privkey.pem (or server.key)
+#
+# For Let's Encrypt certificates, use:
+# sudo certbot certonly --webroot -w /var/www/certbot -d yourdomain.com
+#
+# Certificate files are ignored by .gitignore for security

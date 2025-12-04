@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, PlusCircle, List, Cpu, FolderOpen, LogOut, Settings } from 'lucide-react';
-import { useSimFlow } from '../context/SimFlowContext';
+import { useSimFlow } from '../contexts/SimFlowContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
 

@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: simflow
       POSTGRES_USER: simflow_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-SimFlow2024!Secure}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-SimFlow2025!Secure}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     ports:
       - "5432:5432"
@@ -36,7 +36,7 @@ services:
       DB_PORT: 5432
       DB_NAME: simflow
       DB_USER: simflow_user
-      DB_PASSWORD: ${DB_PASSWORD:-SimFlow2024!Secure}
+      DB_PASSWORD: ${DB_PASSWORD:-SimFlow2025!Secure}
       PORT: 3001
       LOG_LEVEL: info
     ports:

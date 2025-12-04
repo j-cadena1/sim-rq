@@ -194,7 +194,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
 
         {/* Footer */}
         <p className="text-center text-slate-500 text-sm mt-6">
-          Sim-Flow &copy; 2024 - Simulated Workflow Management
+          Sim-Flow &copy; 2025 - Simulated Workflow Management
         </p>
       </div>
     </div>

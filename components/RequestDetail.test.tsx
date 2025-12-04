@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { SimFlowProvider } from '../context/SimFlowContext';
+import { SimFlowProvider } from '../contexts/SimFlowContext';
 import { ModalProvider } from './Modal';
 import { ToastProvider } from './Toast';
 import { RequestDetail } from './RequestDetail';

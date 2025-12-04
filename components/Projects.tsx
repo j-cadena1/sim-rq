@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useSimFlow } from '../context/SimFlowContext';
-import { useProjects, useCreateProject, useUpdateProjectName, useUpdateProjectStatus, useDeleteProject } from '../api/hooks';
+import { useSimFlow } from '../contexts/SimFlowContext';
+import { useProjects, useCreateProject, useUpdateProjectName, useUpdateProjectStatus, useDeleteProject } from '../lib/api/hooks';
 import { useModal } from './Modal';
 import { useToast } from './Toast';
 import { ProjectStatus, UserRole } from '../types';

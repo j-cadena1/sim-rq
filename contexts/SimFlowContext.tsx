@@ -1,6 +1,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { User, UserRole, RequestStatus, SimRequest } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from './AuthContext';
 import {
   useRequests,
   useCreateRequest,
@@ -8,7 +8,7 @@ import {
   useAssignEngineer,
   useAddComment,
   useUsers,
-} from '../api/hooks';
+} from '../lib/api/hooks';
 
 interface SimFlowContextType {
   currentUser: User;

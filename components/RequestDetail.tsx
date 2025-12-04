@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useSimFlow } from '../context/SimFlowContext';
+import { useSimFlow } from '../contexts/SimFlowContext';
 import { useModal } from './Modal';
 import { useToast } from './Toast';
-import { useRequest, useProject, useUpdateProjectHours, useDeleteRequest, useTimeEntries, useAddTimeEntry, useUpdateRequestTitle, useRequestTitleChange, useTitleChangeRequests, useReviewTitleChange, useDiscussionRequests, useCreateDiscussionRequest, useReviewDiscussionRequest } from '../api/hooks';
+import { useRequest, useProject, useUpdateProjectHours, useDeleteRequest, useTimeEntries, useAddTimeEntry, useUpdateRequestTitle, useRequestTitleChange, useTitleChangeRequests, useReviewTitleChange, useDiscussionRequests, useCreateDiscussionRequest, useReviewDiscussionRequest } from '../lib/api/hooks';
 import { RequestStatus, UserRole, TitleChangeRequest, DiscussionRequest } from '../types';
 import { validateComment } from '../utils/validation';
 import { CheckCircle, XCircle, Clock, UserPlus, ArrowLeft, MessageSquare, AlertTriangle, User as UserIcon, FolderOpen, Trash2, Timer, MoreVertical, Edit2, Check, X } from 'lucide-react';
