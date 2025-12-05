@@ -34,6 +34,28 @@
         }
       }
     </script>
+    <style>
+      /* Force date inputs to use dark color scheme */
+      input[type="date"] {
+        color-scheme: dark;
+      }
+
+      /* Ensure date input text is visible */
+      input[type="date"]::-webkit-datetime-edit,
+      input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+      input[type="date"]::-webkit-datetime-edit-text,
+      input[type="date"]::-webkit-datetime-edit-month-field,
+      input[type="date"]::-webkit-datetime-edit-day-field,
+      input[type="date"]::-webkit-datetime-edit-year-field {
+        color: rgb(226, 232, 240); /* slate-200 */
+      }
+
+      /* Style the calendar picker icon */
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        cursor: pointer;
+      }
+    </style>
   <script type="importmap">
 {
   "imports": {
