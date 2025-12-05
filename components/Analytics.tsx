@@ -59,14 +59,20 @@ const Analytics: React.FC = () => {
           <Calendar className="w-5 h-5 text-slate-400" />
           <input
             type="date"
-            className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
+            className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 focus:border-blue-500 focus:outline-none [color-scheme:dark]"
+            style={{
+              colorScheme: 'dark'
+            }}
             value={dateRange.startDate || ''}
             onChange={(e) => handleDateRangeChange(e.target.value, dateRange.endDate || '')}
           />
           <span className="text-slate-400">to</span>
           <input
             type="date"
-            className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 focus:border-blue-500 focus:outline-none"
+            className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 focus:border-blue-500 focus:outline-none [color-scheme:dark]"
+            style={{
+              colorScheme: 'dark'
+            }}
             value={dateRange.endDate || ''}
             onChange={(e) => handleDateRangeChange(dateRange.startDate || '', e.target.value)}
           />
