@@ -31,11 +31,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="flex min-h-screen bg-slate-950">
       <Sidebar />
-      <div className="flex-1 ml-64">
-        <header className="h-16 border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm sticky top-0 z-20 px-8 flex items-center">
-          <h2 className="text-slate-400 text-sm">Engineering Virtualization Portal</h2>
+      <div className="flex-1 lg:ml-64 w-full">
+        <header className="h-16 border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm sticky top-0 z-20 px-4 lg:px-8 flex items-center">
+          <h2 className="text-slate-400 text-sm ml-12 lg:ml-0">Engineering Virtualization Portal</h2>
         </header>
-        <main className="p-8">
+        <main className="p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>
