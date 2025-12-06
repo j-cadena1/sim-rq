@@ -4,9 +4,33 @@ import { SimFlowProvider, useSimFlow } from './SimFlowContext';
 import { UserRole, MOCK_USERS } from '../types';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from './AuthContext';
+
+// Mock the auth context
+const mockUser = {
+  id: 'test-user-id',
+  name: 'Test User',
+  email: 'test@example.com',
+  role: UserRole.USER,
+};
+
+vi.mock('./AuthContext', async () => {
+  const actual = await vi.importActual('./AuthContext');
+  return {
+    ...actual,
+    useAuth: () => ({
+      user: mockUser,
+      isAuthenticated: true,
+      isLoading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      register: vi.fn(),
+    }),
+  };
+});
 
 // Mock the API hooks
-vi.mock('../api/hooks', () => ({
+vi.mock('../lib/api/hooks', () => ({
   useRequests: () => ({
     data: [],
     isLoading: false,
@@ -54,20 +78,11 @@ describe('SimFlowContext', () => {
     });
   });
 
-  describe('currentUser and switchUser', () => {
-    it('should start with first user', () => {
+  describe('currentUser', () => {
+    it('should use authenticated user from AuthContext', () => {
       const { result } = renderHook(() => useSimFlow(), { wrapper });
       expect(result.current.currentUser.role).toBe(UserRole.USER);
-    });
-
-    it('should switch user by role', () => {
-      const { result } = renderHook(() => useSimFlow(), { wrapper });
-
-      act(() => {
-        result.current.switchUser(UserRole.MANAGER);
-      });
-
-      expect(result.current.currentUser.role).toBe(UserRole.MANAGER);
+      expect(result.current.currentUser.id).toBe('test-user-id');
     });
   });
 
