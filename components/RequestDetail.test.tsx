@@ -6,8 +6,29 @@ import { SimFlowProvider } from '../contexts/SimFlowContext';
 import { ModalProvider } from './Modal';
 import { ToastProvider } from './Toast';
 import { RequestDetail } from './RequestDetail';
-import { MOCK_USERS, MOCK_REQUESTS, UserRole } from '../types';
+import { UserRole, RequestStatus, type User, type SimRequest } from '../types';
 import { vi } from 'vitest';
+
+// Test mock data
+const MOCK_USERS: User[] = [
+  { id: 'user-1', name: 'Test User', email: 'test@example.com', role: UserRole.USER },
+  { id: 'eng-1', name: 'Test Engineer', email: 'engineer@example.com', role: UserRole.ENGINEER },
+  { id: 'mgr-1', name: 'Test Manager', email: 'manager@example.com', role: UserRole.MANAGER },
+];
+
+const MOCK_REQUESTS: SimRequest[] = [
+  {
+    id: 'req-1',
+    title: 'Test Request',
+    description: 'This is a test request description',
+    vendor: 'FANUC',
+    status: RequestStatus.PENDING,
+    priority: 'Medium',
+    createdByName: 'Test User',
+    createdAt: new Date().toISOString(),
+    comments: [],
+  },
+];
 
 // Mock the auth context
 const mockUser = {

@@ -1,10 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { SimFlowProvider, useSimFlow } from './SimFlowContext';
-import { UserRole, MOCK_USERS } from '../types';
+import { UserRole, type User } from '../types';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './AuthContext';
+
+// Test mock data
+const MOCK_USERS: User[] = [
+  { id: 'user-1', name: 'Test User', email: 'test@example.com', role: UserRole.USER },
+  { id: 'eng-1', name: 'Test Engineer', email: 'engineer@example.com', role: UserRole.ENGINEER },
+  { id: 'mgr-1', name: 'Test Manager', email: 'manager@example.com', role: UserRole.MANAGER },
+];
 
 // Mock the auth context
 const mockUser = {
