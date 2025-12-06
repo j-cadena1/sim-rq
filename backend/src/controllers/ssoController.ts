@@ -3,6 +3,7 @@ import { query } from '../db';
 import { logger } from '../middleware/logger';
 import { toCamelCase } from '../utils/caseConverter';
 import { logRequestAudit, AuditAction, EntityType } from '../services/auditService';
+import { encrypt, isEncrypted, migrateToEncrypted } from '../services/encryptionService';
 
 interface SSOConfig {
   id: string;
@@ -83,8 +84,16 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
 
     // Only update client_secret if a new one is provided (not masked)
     if (clientSecret && clientSecret !== '***MASKED***') {
-      secretToSave = clientSecret;
-      // TODO: In production, encrypt this before storing
+      // Encrypt the client secret before storing
+      secretToSave = encrypt(clientSecret);
+      logger.info('SSO client secret encrypted before storage');
+    } else if (secretToSave && !isEncrypted(secretToSave)) {
+      // Migrate existing plaintext secret to encrypted
+      const { encrypted, wasPlaintext } = migrateToEncrypted(secretToSave);
+      if (wasPlaintext) {
+        secretToSave = encrypted;
+        logger.info('Migrated existing SSO client secret to encrypted format');
+      }
     }
 
     // Construct authority if not provided
@@ -154,7 +163,7 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
 
 /**
  * Test SSO connection
- * Admin only - validates SSO configuration without saving
+ * Admin only - validates SSO configuration by attempting to authenticate with Entra ID
  */
 export const testSSOConfig = async (req: Request, res: Response) => {
   try {
@@ -166,31 +175,101 @@ export const testSSOConfig = async (req: Request, res: Response) => {
       });
     }
 
-    // TODO: Implement actual connection test to Entra ID
-    // For now, just validate the format
-    const tenantIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const clientIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // Validate UUID format first
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (!tenantIdPattern.test(tenantId)) {
+    if (!uuidPattern.test(tenantId)) {
       return res.status(400).json({
+        success: false,
         error: 'Invalid tenant ID format. Expected UUID format.',
       });
     }
 
-    if (!clientIdPattern.test(clientId)) {
+    if (!uuidPattern.test(clientId)) {
       return res.status(400).json({
+        success: false,
         error: 'Invalid client ID format. Expected UUID format.',
       });
     }
 
-    logger.info('SSO configuration test passed (basic validation)');
-    res.json({
-      success: true,
-      message: 'SSO configuration validated successfully',
-      note: 'Full connection test will be implemented in next phase',
+    // Attempt to get a token using client credentials flow
+    // This validates the tenant, client ID, and client secret are all correct
+    const { ConfidentialClientApplication } = await import('@azure/msal-node');
+
+    const msalConfig = {
+      auth: {
+        clientId: clientId,
+        authority: `https://login.microsoftonline.com/${tenantId}`,
+        clientSecret: clientSecret,
+      },
+    };
+
+    const msalClient = new ConfidentialClientApplication(msalConfig);
+
+    // Request a token for Microsoft Graph (standard scope for testing)
+    // Using client_credentials flow - this doesn't require user interaction
+    const tokenRequest = {
+      scopes: ['https://graph.microsoft.com/.default'],
+    };
+
+    const tokenResponse = await msalClient.acquireTokenByClientCredential(tokenRequest);
+
+    if (tokenResponse && tokenResponse.accessToken) {
+      logger.info('SSO configuration test passed - successfully authenticated with Entra ID');
+      res.json({
+        success: true,
+        message: 'Successfully connected to Microsoft Entra ID',
+        details: {
+          tenantId: tenantId,
+          clientId: clientId,
+          tokenType: tokenResponse.tokenType,
+          expiresOn: tokenResponse.expiresOn,
+        },
+      });
+    } else {
+      logger.warn('SSO configuration test: token response was empty');
+      res.status(400).json({
+        success: false,
+        error: 'Connection succeeded but no token was returned. Check app permissions in Azure.',
+      });
+    }
+  } catch (error: any) {
+    logger.error('SSO configuration test failed:', error);
+
+    // Parse MSAL error messages for user-friendly feedback
+    let errorMessage = 'Failed to connect to Microsoft Entra ID';
+    let errorDetails: string | undefined;
+
+    if (error.errorCode) {
+      switch (error.errorCode) {
+        case 'invalid_client':
+          errorMessage = 'Invalid client credentials';
+          errorDetails = 'The client secret is incorrect or has expired.';
+          break;
+        case 'unauthorized_client':
+          errorMessage = 'Unauthorized client';
+          errorDetails = 'This application is not authorized for client credentials flow. Check Azure app registration.';
+          break;
+        case 'invalid_request':
+          errorMessage = 'Invalid request';
+          errorDetails = error.errorMessage || 'Check tenant ID and client ID are correct.';
+          break;
+        case 'tenant_not_found':
+        case 'invalid_tenant':
+          errorMessage = 'Tenant not found';
+          errorDetails = 'The specified tenant ID does not exist or is not accessible.';
+          break;
+        default:
+          errorDetails = error.errorMessage || error.message;
+      }
+    } else if (error.message) {
+      errorDetails = error.message;
+    }
+
+    res.status(400).json({
+      success: false,
+      error: errorMessage,
+      details: errorDetails,
     });
-  } catch (error) {
-    logger.error('Error testing SSO configuration:', error);
-    res.status(500).json({ error: 'Failed to test SSO configuration' });
   }
 };
