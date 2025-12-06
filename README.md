@@ -33,20 +33,22 @@ cp .env.example .env
 make prod
 
 # That's it! ✨
-# Application: http://localhost:8080
-# API Docs:    http://localhost:3001/api-docs
+# Application: http://<your-server>:8080
+# (Use a reverse proxy for HTTPS in production)
 ```
 
-### Development with Hot Reload
+### Development Mode (Local Only)
 
 ```bash
-# Start development environment (hot reload enabled)
+# For local development with hot reload
 make dev
 
 # Frontend: http://localhost:5173 (Vite dev server)
-# Backend:  http://localhost:3001
+# Backend:  http://localhost:3001 (API)
 # Database: localhost:5432
 ```
+
+> **Note:** Development mode is intended for local workstations. For server deployments, always use production mode with a reverse proxy.
 
 ## 📖 Available Commands
 
@@ -210,13 +212,19 @@ npx playwright test --ui    # Interactive mode
 
 ### Health Checks
 
-- Frontend health: `http://localhost:8080/health`
-- Backend health: `http://localhost:3001/health`
-- Backend ready: `http://localhost:3001/ready`
+From within the Docker network:
+
+- Frontend health: `http://sim-flow-frontend/health`
+- Backend health: `http://sim-flow-api:3001/health`
+- Backend ready: `http://sim-flow-api:3001/ready`
+
+From outside (only port 8080 is exposed):
+
+- Application health: `http://<your-server>:8080/health`
 
 ### Metrics
 
-Prometheus metrics available at: `http://localhost:3001/metrics`
+Prometheus metrics available at: `http://sim-flow-api:3001/metrics` (internal Docker network)
 
 Includes:
 
@@ -228,7 +236,7 @@ Includes:
 
 ### API Documentation
 
-Interactive Swagger documentation: `http://localhost:3001/api-docs`
+Interactive Swagger documentation is available via the backend container (internal access only for security).
 
 ### Logs
 
@@ -283,39 +291,71 @@ To add new migrations:
 2. Add to `database/init.sql`
 3. Rebuild containers: `make prod-build`
 
-## 🚢 Deployment Options
+## 🚢 Production Deployment
 
-### Option 1: Docker Compose (Recommended)
+### On-Premise / VPS Deployment
+
+Sim-Flow is designed for headless server deployment:
 
 ```bash
-# On your server
+# 1. On your server
 git clone https://github.com/j-cadena1/sim-flow.git
 cd sim-flow
+
+# 2. Configure environment
 cp .env.example .env
-nano .env  # Set DB_PASSWORD and CORS_ORIGIN
+nano .env  # Set:
+           # - DB_PASSWORD (strong password)
+           # - CORS_ORIGIN=https://your-domain.com
+           # - SSO_ENCRYPTION_KEY (if using SSO)
+
+# 3. Start production containers
 make prod
+
+# 4. Set up reverse proxy for HTTPS (see below)
 ```
 
-### Option 2: Behind Reverse Proxy
+### Reverse Proxy (Required for Production)
 
-Sim-Flow exposes a **single port (8080)** for easy reverse proxy integration. Works with cloudflared, Nginx Proxy Manager, Traefik, Caddy, and any other reverse proxy.
+Sim-Flow exposes a **single port (8080)** for easy reverse proxy integration. Your reverse proxy handles:
+
+- SSL/TLS termination (HTTPS)
+- Public domain routing
+- Additional security headers
 
 **Quick setup:**
 
 1. Start Sim-Flow: `make prod`
-2. Point your reverse proxy to `http://localhost:8080`
+2. Point your reverse proxy to `http://<sim-flow-server>:8080`
 3. Set `CORS_ORIGIN=https://your-domain.com` in `.env`
 4. Restart: `make prod-down && make prod`
 
 **Supported reverse proxies:**
 
-- Cloudflare Tunnel (cloudflared)
-- Nginx Proxy Manager
-- Traefik
-- Caddy
+- Cloudflare Tunnel (cloudflared) - Zero-config, no port forwarding needed
+- Nginx Proxy Manager - Web UI for easy management
+- Traefik - Auto-discovery with Docker labels
+- Caddy - Automatic HTTPS
 - Standard Nginx/Apache
 
 See [REVERSE-PROXY.md](REVERSE-PROXY.md) for detailed configuration examples.
+
+### Microsoft Entra ID SSO Configuration
+
+When deploying with SSO:
+
+1. **In Azure Portal:**
+   - Register an application in Microsoft Entra ID
+   - Set the Redirect URI to: `https://your-domain.com/api/auth/sso/callback`
+   - Note the Tenant ID, Client ID, and create a Client Secret
+
+2. **In Sim-Flow Settings (as qAdmin):**
+   - Navigate to Settings → SSO Configuration
+   - Enter your Tenant ID, Client ID, and Client Secret
+   - Set Redirect URI to: `https://your-domain.com/api/auth/sso/callback`
+   - Enable SSO and save
+
+3. **Important:** The Redirect URI must match exactly in both Azure and Sim-Flow settings.
 
 ### Option 3: Kubernetes (Advanced)
 

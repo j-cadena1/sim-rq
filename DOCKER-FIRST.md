@@ -33,7 +33,7 @@ Docker Compose version v2.0.0 or higher
 
 ## 🚀 Production Deployment
 
-Perfect for deploying on a server, VM, or your local machine.
+Designed for headless server deployment (on-premise servers, VPS, cloud VMs).
 
 ### 3-Step Deployment
 
@@ -64,11 +64,15 @@ Docker built and started three containers:
 
 ### Access Your Application
 
+For production, you'll access via your reverse proxy (e.g., `https://simflow.company.com`).
+
+For initial testing on the server:
+
 ```text
-🌐 Application:  http://localhost:8080
-📚 API Docs:     http://localhost:3001/api-docs
-📊 Metrics:      http://localhost:3001/metrics
+🌐 Application:  http://<server-ip>:8080
 ```
+
+> **Important:** Port 8080 is the only exposed port. The backend API (3001) is internal to Docker. Use a reverse proxy for HTTPS access.
 
 ### Default Login
 
@@ -99,6 +103,8 @@ This starts:
 - **Node debugger** on port 9229 (for VS Code/IDE debugging)
 
 ### Access Development Environment
+
+> **Note:** Development mode is for local workstations only, not for server deployment.
 
 ```text
 🔥 Frontend (Hot Reload):  http://localhost:5173
@@ -416,26 +422,33 @@ make dev-logs     # Development
 
 ### Health Endpoints
 
-```bash
-# Frontend health
-curl http://localhost:8080/health
+From outside (public-facing):
 
+```bash
+# Frontend/Application health (only exposed port)
+curl http://<your-server>:8080/health
+```
+
+From within Docker network (for monitoring tools):
+
+```bash
 # Backend health
-curl http://localhost:3001/health
+docker compose exec backend curl http://localhost:3001/health
 
 # Backend ready check
-curl http://localhost:3001/ready
+docker compose exec backend curl http://localhost:3001/ready
 ```
 
 ### Prometheus Metrics
 
-```bash
-# View metrics
-curl http://localhost:3001/metrics
+Metrics are available internally for monitoring tools:
 
-# Or in browser
-open http://localhost:3001/metrics
+```bash
+# From Docker host
+docker compose exec backend curl http://localhost:3001/metrics
 ```
+
+> **Security Note:** Metrics and API docs are not exposed externally. Access them via Docker exec or configure your monitoring tools to connect to the Docker network.
 
 ---
 

@@ -420,10 +420,10 @@ export const Settings: React.FC = () => {
               type="text"
               value={config.redirectUri || ''}
               onChange={(e) => setConfig({ ...config, redirectUri: e.target.value })}
-              placeholder="https://your-domain.com/auth/callback"
+              placeholder="https://your-domain.com/api/auth/sso/callback"
               className="w-full px-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">OAuth2 redirect URI configured in Azure</p>
+            <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">Must match the Redirect URI in your Azure app registration (e.g., https://simflow.company.com/api/auth/sso/callback)</p>
           </div>
 
           {/* Scopes */}

@@ -29,7 +29,7 @@ Start Sim-Flow:
 make prod
 ```
 
-1. Configure your reverse proxy to forward traffic to `http://localhost:8080` (or `http://sim-flow-frontend:8080` if on the same Docker network).
+1. Configure your reverse proxy to forward traffic to `http://<sim-flow-server>:8080` (or `http://sim-flow-frontend:80` if on the same Docker network).
 
 2. Set the `CORS_ORIGIN` environment variable to your public URL:
 
@@ -44,187 +44,18 @@ CORS_ORIGIN=https://simflow.yourdomain.com
 |----------|-------------|---------|
 | `CORS_ORIGIN` | Your public URL (required for cookies to work) | `https://simflow.example.com` |
 
-## Reverse Proxy Examples
+## Reverse Proxy Configuration
 
-### Cloudflare Tunnel (cloudflared)
+The key settings for any reverse proxy:
 
-Cloudflare Tunnels provide a secure way to expose your application without opening ports on your firewall.
+| Setting | Value |
+|---------|-------|
+| Backend URL | `http://<sim-flow-server>:8080` or `http://sim-flow-frontend:80` (same Docker network) |
+| Forward Port | `8080` (or `80` if on same Docker network) |
+| SSL | Enable with Let's Encrypt or your certificates |
+| Required Headers | `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto` |
 
-**1. Install cloudflared:**
-
-```bash
-# macOS
-brew install cloudflared
-
-# Linux
-curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-sudo dpkg -i cloudflared.deb
-```
-
-**2. Authenticate:**
-
-```bash
-cloudflared tunnel login
-```
-
-**3. Create a tunnel:**
-
-```bash
-cloudflared tunnel create simflow
-```
-
-**4. Configure the tunnel (`~/.cloudflared/config.yml`):**
-
-```yaml
-tunnel: <YOUR_TUNNEL_ID>
-credentials-file: /home/user/.cloudflared/<YOUR_TUNNEL_ID>.json
-
-ingress:
-  - hostname: simflow.yourdomain.com
-    service: http://localhost:8080
-  - service: http_status:404
-```
-
-**5. Route DNS:**
-
-```bash
-cloudflared tunnel route dns simflow simflow.yourdomain.com
-```
-
-**6. Run the tunnel:**
-
-```bash
-cloudflared tunnel run simflow
-```
-
-**7. Update Sim-Flow configuration:**
-
-```bash
-# .env
-CORS_ORIGIN=https://simflow.yourdomain.com
-```
-
----
-
-### Nginx Proxy Manager (NPM)
-
-Nginx Proxy Manager provides a web UI for managing reverse proxies.
-
-**1. Add Proxy Host in NPM:**
-
-- Domain Names: `simflow.yourdomain.com`
-- Scheme: `http`
-- Forward Hostname/IP: `sim-flow-frontend` (if on same Docker network) or your server IP
-- Forward Port: `8080`
-
-**2. SSL Tab:**
-
-- Request a new SSL certificate (Let's Encrypt)
-- Force SSL: Yes
-- HTTP/2 Support: Yes
-
-**3. Advanced Tab (optional):**
-
-```nginx
-# Custom Nginx configuration (usually not needed)
-proxy_set_header X-Real-IP $remote_addr;
-proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-proxy_set_header X-Forwarded-Proto $scheme;
-```
-
-**4. Docker Network (if using Docker):**
-
-If NPM is running in Docker, connect it to the Sim-Flow network:
-
-```yaml
-# In your NPM docker-compose.yaml, add:
-networks:
-  default:
-    external: true
-    name: simflow-network
-```
-
-Or connect the existing container:
-
-```bash
-docker network connect simflow-network nginx-proxy-manager
-```
-
----
-
-### Traefik
-
-Traefik is a modern reverse proxy with automatic SSL and Docker integration.
-
-#### Option 1: Labels (recommended if Traefik manages Docker)
-
-Add these labels to the frontend service in `docker-compose.yaml`:
-
-```yaml
-frontend:
-  labels:
-    - "traefik.enable=true"
-    - "traefik.http.routers.simflow.rule=Host(`simflow.yourdomain.com`)"
-    - "traefik.http.routers.simflow.entrypoints=websecure"
-    - "traefik.http.routers.simflow.tls.certresolver=letsencrypt"
-    - "traefik.http.services.simflow.loadbalancer.server.port=80"
-```
-
-### Option 2: File-based configuration
-
-Create `traefik/dynamic/simflow.yaml`:
-
-```yaml
-http:
-  routers:
-    simflow:
-      rule: "Host(`simflow.yourdomain.com`)"
-      service: simflow
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-
-  services:
-    simflow:
-      loadBalancer:
-        servers:
-          - url: "http://sim-flow-frontend:80"
-```
-
----
-
-### Caddy
-
-Caddy automatically handles SSL certificates.
-
-**Caddyfile:**
-
-```caddyfile
-simflow.yourdomain.com {
-    reverse_proxy localhost:8080
-}
-```
-
-Or with Docker:
-
-```caddyfile
-simflow.yourdomain.com {
-    reverse_proxy sim-flow-frontend:80
-}
-```
-
-**Run Caddy:**
-
-```bash
-caddy run --config Caddyfile
-```
-
----
-
-### Standard Nginx (Manual)
-
-If you're running Nginx directly on the host.
+### Nginx Example
 
 **`/etc/nginx/sites-available/simflow`:**
 
@@ -253,7 +84,7 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
 
     location / {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://<sim-flow-server>:8080;  # Replace with your Sim-Flow server IP/hostname
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -345,14 +176,41 @@ proxy_set_header Connection 'upgrade';
 
 ---
 
+## SSO Configuration with Reverse Proxy
+
+When using Microsoft Entra ID SSO behind a reverse proxy:
+
+1. **Azure App Registration:**
+   - Redirect URI must be your public HTTPS URL: `https://simflow.yourdomain.com/api/auth/sso/callback`
+
+2. **Sim-Flow Settings:**
+   - In the SSO Configuration panel, set Redirect URI to the same public URL
+   - This must match exactly what's configured in Azure
+
+3. **Common Mistake:**
+   - Don't use `localhost` or internal URLs - SSO redirects happen in the user's browser
+   - The URL must be accessible from the internet
+
+**Example:**
+
+```text
+Public URL:      https://simflow.company.com
+CORS_ORIGIN:     https://simflow.company.com
+SSO Redirect:    https://simflow.company.com/api/auth/sso/callback
+```
+
+---
+
 ## Security Checklist
 
 - [ ] SSL/TLS enabled on reverse proxy
 - [ ] HTTP → HTTPS redirect configured
 - [ ] `CORS_ORIGIN` set to your public URL
+- [ ] SSO Redirect URI matches public URL (if using SSO)
 - [ ] Reverse proxy forwards `X-Real-IP` and `X-Forwarded-Proto` headers
 - [ ] Firewall blocks direct access to port 8080 (only proxy can reach it)
 - [ ] Strong `DB_PASSWORD` set in `.env`
+- [ ] `SSO_ENCRYPTION_KEY` set (if using SSO)
 - [ ] Default admin password changed
 
 ---
@@ -363,7 +221,7 @@ Your reverse proxy can use these endpoints for health monitoring:
 
 | Endpoint | Purpose | Expected Response |
 |----------|---------|-------------------|
-| `http://localhost:8080/health` | Frontend liveness | `200 OK` with text "healthy" |
+| `http://<sim-flow-server>:8080/health` | Frontend liveness | `200 OK` with text "healthy" |
 
 For internal monitoring (within Docker network):
 
