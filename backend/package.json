@@ -2,6 +2,25 @@
   "name": "sim-flow-backend",
   "version": "1.0.0",
   "description": "Sim-Flow Backend API",
+  "author": "Sim-Flow Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/j-cadena1/sim-flow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/j-cadena1/sim-flow/issues"
+  },
+  "homepage": "https://github.com/j-cadena1/sim-flow#readme",
+  "keywords": [
+    "api",
+    "backend",
+    "express",
+    "typescript",
+    "postgresql",
+    "authentication",
+    "session-management"
+  ],
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -22,7 +41,6 @@
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
     "isomorphic-dompurify": "^2.9.0",
-    "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
@@ -35,7 +53,6 @@
     "@types/cors": "^2.8.17",
     "@types/dompurify": "^3.0.5",
     "@types/express": "^4.17.21",
-    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.10.6",
     "@types/pg": "^8.10.9",
     "@types/swagger-jsdoc": "^6.0.4",

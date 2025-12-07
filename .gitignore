@@ -39,6 +39,8 @@ database/backups/
 coverage/
 .nyc_output/
 test-results/
+test-results*.txt
+*.spec.ts.snap
 
 # OS files
 .DS_Store
@@ -82,6 +84,8 @@ temp/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+/tests/.auth/
+playwright-report.html
 
 # Claude Code configuration (personal preference)
 CLAUDE.md

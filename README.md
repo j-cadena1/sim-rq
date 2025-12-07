@@ -1,436 +1,253 @@
-# Sim-Flow Dashboard
+# Sim-Flow
 
-A role-based engineering simulation request management system with comprehensive audit logging, analytics, and Microsoft Entra ID SSO integration.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/j-cadena1/sim-flow/releases)
+[![Docker](https://img.shields.io/badge/Docker-Required-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+
+Role-based engineering simulation request management system with analytics, audit logging, and Microsoft Entra ID SSO.
 
 ## Features
 
-- **Role-Based Access Control**: Admin, Manager, Engineer, and End-User roles
-- **Request Management**: Full lifecycle tracking from submission to completion
-- **Project Hour Tracking**: Allocate and monitor project hour budgets
-- **SSO Integration**: Microsoft Entra ID (Azure AD) authentication
-- **Audit Logging**: Comprehensive tracking of all system actions
-- **Analytics Dashboard**: Real-time insights into team productivity and resource utilization
-- **Discussion Workflow**: Engineers can request hour adjustments with manager approval
-- **Title Change Approval**: Controlled request title modifications
-- **Security**: Session-based authentication, rate limiting, structured logging
-- **Monitoring**: Prometheus metrics, health checks, API documentation
+- **Role-Based Access**: Admin, Manager, Engineer, End-User
+- **Request Lifecycle**: Full tracking from submission to completion with enforced workflow stages
+- **Project Hour Tracking**: Budget allocation and monitoring
+- **SSO**: Microsoft Entra ID (Azure AD) PKCE authentication
+- **Analytics**: Real-time productivity and resource insights
+- **Security**: Session-based auth, rate limiting, audit logging
 
-## 🚀 Quick Start (Docker-First)
+## Quick Start
 
-**Prerequisites:** Docker and Docker Compose only!
+**Prerequisites:** Docker and Docker Compose
 
-### Production Deployment
+### Production
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/j-cadena1/sim-flow.git
 cd sim-flow
-
-# 2. Create environment file (optional - has secure defaults)
-cp .env.example .env
-
-# 3. Start the application
 make prod
-
-# That's it! ✨
-# Application: http://<your-server>:8080
-# (Use a reverse proxy for HTTPS in production)
 ```
 
-### Development Mode (Local Only)
+Application runs on `http://<your-server>:8080`
+
+**Use a reverse proxy for HTTPS in production (see below).**
+
+### Development
 
 ```bash
-# For local development with hot reload
-make dev
-
-# Frontend: http://localhost:5173 (Vite dev server)
-# Backend:  http://localhost:3001 (API)
-# Database: localhost:5432
+make dev  # Hot reload at http://localhost:5173
 ```
 
-> **Note:** Development mode is intended for local workstations. For server deployments, always use production mode with a reverse proxy.
-
-## 📖 Available Commands
-
-Run `make help` to see all available commands:
+## Commands
 
 ```bash
 make help         # Show all commands
-
-# Development
-make dev          # Start dev environment with hot reload
-make dev-logs     # View development logs
-make dev-down     # Stop dev environment
-
-# Production
-make prod         # Start production environment
-make prod-logs    # View production logs
-make prod-down    # Stop production environment
-
-# Testing
-make test         # Run unit tests
-make test-e2e     # Run E2E tests with Playwright
-
-# Database
-make db-shell     # Open PostgreSQL shell
-make db-backup    # Backup database to backup.sql
-make db-restore   # Restore from backup.sql
-
-# Utilities
+make prod         # Start production
+make dev          # Start dev with hot reload
+make test-e2e     # Run E2E tests
+make db-backup    # Backup database
 make status       # Show container status
-make clean        # Remove all containers and volumes
+make clean        # Remove all containers
 ```
 
-## 🏗️ Architecture
+## Default Credentials
 
-- **Frontend**: React + TypeScript + Vite + TailwindCSS
-- **Backend**: Node.js + Express + TypeScript
-- **Database**: PostgreSQL 16
-- **Authentication**: Session cookies + Microsoft Entra ID PKCE flow
-- **Deployment**: Docker + Docker Compose
-- **Monitoring**: Prometheus metrics, structured logging
-- **Documentation**: OpenAPI/Swagger
-
-## 📐 Development Philosophy
-
-This project follows two core principles:
-
-1. **Docker-First Approach**: The application is designed to run anywhere Docker is installed. All services (frontend, backend, database) are containerized, ensuring consistent behavior across development, testing, and production environments. No local dependencies required beyond Docker.
-
-2. **Well-Documented Code**: All new features and code changes should be thoroughly documented. This includes JSDoc comments for functions, inline comments for complex logic, and updated README sections for user-facing features.
-
-## 🔒 Security Configuration
-
-### Default Credentials
-
-**Admin User:**
+**Admin:**
 
 - Email: `qadmin@simflow.local`
 - Password: `admin123`
 
-**⚠️ Change the admin password immediately in production!**
+**Test Accounts:**
 
-### Environment Variables
+- Manager: `bob@simflow.local` / `manager123`
+- Engineer: `charlie@simflow.local` / `engineer123`
+- User: `alice@simflow.local` / `user123`
 
-Create a `.env` file for production (optional - defaults are provided):
+**⚠️ Change admin password in production!**
+
+## Reverse Proxy Setup
+
+Sim-Flow exposes port **8080** only. Point your reverse proxy there:
+
+1. Start Sim-Flow: `make prod`
+2. Configure proxy to forward to `http://<server>:8080`
+3. Set `CORS_ORIGIN=https://your-domain.com` in `.env`
+4. Restart: `make prod-down && make prod`
+
+### Nginx Example
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name simflow.yourdomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/simflow.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/simflow.yourdomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://<sim-flow-server>:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Works with: Cloudflare Tunnel, Nginx Proxy Manager, Traefik, Caddy, standard Nginx/Apache.
+
+## Environment Variables
+
+Create `.env` for production:
 
 ```bash
 # Database
-DB_PASSWORD=YourStrongPasswordHere123!@#
+DB_PASSWORD=YourStrongPassword123!
 
-# SSO Encryption (for storing SSO client secrets)
+# SSO Encryption (if using SSO)
 SSO_ENCRYPTION_KEY=$(openssl rand -base64 32)
 
-# CORS (restrict to your domain in production)
+# CORS (your public domain)
 CORS_ORIGIN=https://your-domain.com
 
-# Node Environment
+# Environment
 NODE_ENV=production
 ```
 
-### Production Security Checklist
+## SSO Configuration
 
-- [ ] Change default admin password
-- [ ] Set a strong `DB_PASSWORD` in `.env`
-- [ ] Set `SSO_ENCRYPTION_KEY` if using SSO
-- [ ] Configure `CORS_ORIGIN` to your domain
-- [ ] Use HTTPS with a reverse proxy (nginx/Traefik/Caddy)
-- [ ] Restrict database port (5432) to localhost only
-- [ ] Set up regular database backups (`make db-backup`)
-- [ ] Monitor logs for suspicious activity
-- [ ] Keep Docker images updated
+### Method 1: Environment Variables (Recommended)
 
-## 🛠️ Development
-
-### Prerequisites (for local development only)
-
-If you want to develop outside of Docker, you'll need:
-
-- Node.js 20+
-- PostgreSQL 16+
-
-But we recommend using the Docker development environment instead:
+Configure SSO via `.env` file - survives database migrations/deletions:
 
 ```bash
-make dev          # Everything runs in Docker with hot reload
-make dev-logs     # View logs
+# In .env file
+SSO_TENANT_ID=your-tenant-id
+SSO_CLIENT_ID=your-client-id
+SSO_CLIENT_SECRET=your-client-secret
+SSO_REDIRECT_URI=https://your-domain.com/api/auth/sso/callback
 ```
 
-### Project Structure
+Restart containers: `make prod-down && make prod`
 
-```text
-sim-flow/
-├── backend/              # Express API server
-│   ├── src/
-│   │   ├── controllers/  # Request handlers
-│   │   ├── middleware/   # Auth, logging, rate limiting
-│   │   ├── routes/       # API routes
-│   │   ├── services/     # Business logic
-│   │   └── utils/        # Helpers
-│   ├── Dockerfile        # Production build
-│   └── Dockerfile.dev    # Development with hot reload
-├── components/           # React components
-├── contexts/             # React contexts (Auth, Theme, etc)
-├── lib/                  # API client, utilities
-├── database/             # SQL migrations and init scripts
-├── tests/                # E2E tests (Playwright)
-├── Dockerfile            # Frontend production build
-├── Dockerfile.dev        # Frontend dev server
-├── docker-compose.yaml   # Production configuration
-├── docker-compose.dev.yaml  # Development configuration
-└── Makefile             # Easy Docker commands
-```
+### Method 2: Web UI
 
-## 🧪 Testing
+1. **Azure Portal:**
+   - Register app in Microsoft Entra ID
+   - Set Redirect URI: `https://your-domain.com/api/auth/sso/callback`
+   - Note Tenant ID, Client ID, create Client Secret
 
-### Unit Tests
+2. **Sim-Flow Settings:**
+   - Login as qAdmin
+   - Navigate to Settings → SSO Configuration
+   - Enter Tenant ID, Client ID, Client Secret
+   - Set Redirect URI: `https://your-domain.com/api/auth/sso/callback`
+   - Enable and save
+
+**Important:** Redirect URI must match exactly in both Azure and Sim-Flow. The `.env` method is preferred for production as it survives database resets.
+
+## Architecture
+
+- **Frontend**: React + TypeScript + Vite + TailwindCSS
+- **Backend**: Node.js + Express + TypeScript
+- **Database**: PostgreSQL 16
+- **Auth**: Session cookies + Microsoft Entra ID PKCE
+- **Deployment**: Docker + Docker Compose
+
+## Database Management
 
 ```bash
-# Run in Docker (recommended)
-make test
-
-# Or locally
-npm test                  # Frontend tests
-cd backend && npm test    # Backend tests
+make db-backup      # Creates backup.sql
+make db-restore     # Restores from backup.sql
+make db-shell       # Open psql shell
 ```
 
-### E2E Tests
+Migrations are in `database/migrations/` and auto-apply on startup.
+
+## Testing
 
 ```bash
-# Start production environment
-make prod
-
-# Run E2E tests
-make test-e2e
+make test         # Unit tests
+make test-e2e     # E2E tests (Playwright)
 
 # Or manually
 npx playwright test
-npx playwright test --ui    # Interactive mode
+npx playwright test --ui
 ```
 
-## 📊 Monitoring
+**Test suite:** 86 E2E tests covering auth, roles, requests, lifecycle, analytics, forms, navigation.
+
+## Monitoring
 
 ### Health Checks
 
-From within the Docker network:
-
-- Frontend health: `http://sim-flow-frontend/health`
-- Backend health: `http://sim-flow-api:3001/health`
-- Backend ready: `http://sim-flow-api:3001/ready`
-
-From outside (only port 8080 is exposed):
-
-- Application health: `http://<your-server>:8080/health`
-
-### Metrics
-
-Prometheus metrics available at: `http://sim-flow-api:3001/metrics` (internal Docker network)
-
-Includes:
-
-- HTTP request counts and durations
-- Database connection pool stats
-- Active users
-- Request status distributions
-- Process uptime and memory usage
-
-### API Documentation
-
-Interactive Swagger documentation is available via the backend container (internal access only for security).
+- Application: `http://<server>:8080/health`
+- Backend (internal): `http://sim-flow-api:3001/health`
+- Readiness (internal): `http://sim-flow-api:3001/ready`
 
 ### Logs
 
 ```bash
-# Production logs
-make prod-logs
-
-# Development logs
-make dev-logs
-
-# Or directly with Docker
-docker compose logs -f backend
-docker compose logs -f frontend
-docker compose logs -f postgres
+make prod-logs    # View production logs
+make dev-logs     # View dev logs
 ```
 
-## 🗄️ Database Management
+### Metrics
 
-### Backup
+Prometheus metrics at `http://sim-flow-api:3001/metrics` (internal only)
 
-```bash
-# Create backup
-make db-backup
+## Security Checklist
 
-# Creates backup.sql in current directory
-```
+- [ ] Change default admin password
+- [ ] Set strong `DB_PASSWORD` in `.env`
+- [ ] Set `SSO_ENCRYPTION_KEY` (if using SSO)
+- [ ] Configure `CORS_ORIGIN` to your domain
+- [ ] Use HTTPS with reverse proxy
+- [ ] Restrict database port (5432) to localhost
+- [ ] Set up regular backups (`make db-backup`)
+- [ ] Keep Docker images updated
 
-### Restore
+## Troubleshooting
 
-```bash
-# Restore from backup.sql
-make db-restore
-```
-
-### Direct Access
-
-```bash
-# Open PostgreSQL shell
-make db-shell
-
-# Or manually
-docker compose exec postgres psql -U simflow_user -d simflow
-```
-
-### Migrations
-
-Database migrations are automatically applied on container startup from `database/init.sql`.
-
-To add new migrations:
-
-1. Create SQL file in `database/migrations/`
-2. Add to `database/init.sql`
-3. Rebuild containers: `make prod-build`
-
-## 🚢 Production Deployment
-
-### On-Premise / VPS Deployment
-
-Sim-Flow is designed for headless server deployment:
+### Port in use
 
 ```bash
-# 1. On your server
-git clone https://github.com/j-cadena1/sim-flow.git
-cd sim-flow
-
-# 2. Configure environment
-cp .env.example .env
-nano .env  # Set:
-           # - DB_PASSWORD (strong password)
-           # - CORS_ORIGIN=https://your-domain.com
-           # - SSO_ENCRYPTION_KEY (if using SSO)
-
-# 3. Start production containers
-make prod
-
-# 4. Set up reverse proxy for HTTPS (see below)
-```
-
-### Reverse Proxy (Required for Production)
-
-Sim-Flow exposes a **single port (8080)** for easy reverse proxy integration. Your reverse proxy handles:
-
-- SSL/TLS termination (HTTPS)
-- Public domain routing
-- Additional security headers
-
-**Quick setup:**
-
-1. Start Sim-Flow: `make prod`
-2. Point your reverse proxy to `http://<sim-flow-server>:8080`
-3. Set `CORS_ORIGIN=https://your-domain.com` in `.env`
-4. Restart: `make prod-down && make prod`
-
-**Supported reverse proxies:**
-
-- Cloudflare Tunnel (cloudflared) - Zero-config, no port forwarding needed
-- Nginx Proxy Manager - Web UI for easy management
-- Traefik - Auto-discovery with Docker labels
-- Caddy - Automatic HTTPS
-- Standard Nginx/Apache
-
-See [REVERSE-PROXY.md](REVERSE-PROXY.md) for detailed configuration examples.
-
-### Microsoft Entra ID SSO Configuration
-
-When deploying with SSO:
-
-1. **In Azure Portal:**
-   - Register an application in Microsoft Entra ID
-   - Set the Redirect URI to: `https://your-domain.com/api/auth/sso/callback`
-   - Note the Tenant ID, Client ID, and create a Client Secret
-
-2. **In Sim-Flow Settings (as qAdmin):**
-   - Navigate to Settings → SSO Configuration
-   - Enter your Tenant ID, Client ID, and Client Secret
-   - Set Redirect URI to: `https://your-domain.com/api/auth/sso/callback`
-   - Enable SSO and save
-
-3. **Important:** The Redirect URI must match exactly in both Azure and Sim-Flow settings.
-
-### Option 3: Kubernetes (Advanced)
-
-Kubernetes manifests coming soon. For now, use Docker Compose.
-
-## 🔧 Troubleshooting
-
-### Port Already in Use
-
-```bash
-# Check what's using the port
 sudo lsof -i :8080
-
-# Change port in docker-compose.yaml or use environment variable
+# Or change port
 FRONTEND_PORT=9000 make prod
 ```
 
-### Container Won't Start
+### Container won't start
 
 ```bash
-# Check logs
 make prod-logs
-
-# Rebuild from scratch
-make clean
-make prod-build
+make clean && make prod-build
 ```
 
-### Database Connection Errors
+### Login issues / Cookies not working
 
 ```bash
-# Check database health
-docker compose ps postgres
-
-# Restart database
-docker compose restart postgres
-
-# Check logs
-docker compose logs postgres
+# Set CORS_ORIGIN to your exact public URL
+echo "CORS_ORIGIN=https://your-domain.com" >> .env
+make prod-down && make prod
 ```
 
-### Permission Errors
+## Contributing
 
-```bash
-# Reset permissions on volumes
-make clean
-make prod
-```
-
-## 📚 Documentation
-
-- [Quick Start Guide](QUICKSTART.md) - Fast deployment walkthrough
-- [Reverse Proxy Guide](REVERSE-PROXY.md) - Cloudflared, NPM, Traefik, Caddy setup
-- [Backend Architecture](BACKEND-ARCHITECTURE.md) - API documentation and architecture
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
+1. Fork the repo
+2. Create feature branch (`git checkout -b feature/name`)
+3. Make changes
 4. Run tests (`make test && make test-e2e`)
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+5. Commit (`git commit -m 'Add feature'`)
+6. Push and open PR
 
-## 📝 License
+## License
 
-MIT License - See LICENSE file for details.
+MIT License
 
-## 💬 Support
-
-For issues or questions:
+## Support
 
 - Open an issue on GitHub
-- Check existing documentation
-- Review logs with `make prod-logs` or `make dev-logs`
+- Check logs: `make prod-logs` or `make dev-logs`

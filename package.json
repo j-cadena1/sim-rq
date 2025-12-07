@@ -1,7 +1,27 @@
 {
   "name": "sim-flow-dashboard",
+  "version": "1.0.0",
+  "description": "Role-based engineering simulation request management system",
+  "author": "Sim-Flow Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/j-cadena1/sim-flow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/j-cadena1/sim-flow/issues"
+  },
+  "homepage": "https://github.com/j-cadena1/sim-flow#readme",
+  "keywords": [
+    "simulation",
+    "request-management",
+    "workflow",
+    "docker",
+    "typescript",
+    "react",
+    "postgresql"
+  ],
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
