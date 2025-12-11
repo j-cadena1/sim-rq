@@ -28,6 +28,9 @@ npm-debug.log*
 # Testing
 coverage
 
+# Data directories (bind mounts - may have restricted permissions)
+data
+
 # Misc
 README.md
 WARP.md
