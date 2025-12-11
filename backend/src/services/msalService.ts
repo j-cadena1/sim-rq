@@ -135,7 +135,12 @@ const getSSOConfigFromEnv = (): SSOConfig | null => {
  */
 export const getSSOConfigFromDB = async (): Promise<SSOConfig | null> => {
   try {
-    const result = await query('SELECT * FROM sso_configuration WHERE enabled = true LIMIT 1');
+    const result = await query(`
+      SELECT *, client_secret_encrypted AS client_secret
+      FROM sso_configuration
+      WHERE enabled = true
+      LIMIT 1
+    `);
 
     if (result.rows.length === 0) {
       return null;

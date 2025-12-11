@@ -258,13 +258,20 @@ CREATE TABLE sso_configuration (
     tenant_id VARCHAR(255),
     client_id VARCHAR(255),
     client_secret_encrypted TEXT,
+    redirect_uri VARCHAR(512),
+    authority VARCHAR(512),
+    scopes TEXT DEFAULT 'openid,profile,email',
     enabled BOOLEAN DEFAULT false,
     auto_provision_users BOOLEAN DEFAULT true,
     default_role VARCHAR(50) DEFAULT 'End-User' CHECK (default_role IN ('Admin', 'Manager', 'Engineer', 'End-User')),
     allowed_domains TEXT[],
+    updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Insert default disabled SSO configuration (prevents 404 on Settings page)
+INSERT INTO sso_configuration (enabled, scopes) VALUES (false, 'openid,profile,email');
 
 -- Refresh tokens (for session management)
 CREATE TABLE refresh_tokens (

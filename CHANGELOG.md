@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- markdownlint-disable MD024 -->
 
+## [0.9.3] - 2025-12-10
+
+### Added
+
+- **Storage proxy for reverse proxy deployments** - nginx now proxies `/storage/` to Garage S3, allowing file attachments to work behind Cloudflare Tunnel and other reverse proxies
+
+### Fixed
+
+- **Broken thumbnails behind reverse proxy** - Signed S3 URLs now use the public domain instead of internal Docker hostnames
+- **File downloads failing** - S3 storage is now accessible through the `/storage/` path on the main domain
+- **SSO configuration error toast** - Settings page no longer shows error when SSO is not configured via environment variables (returns empty config instead of 404)
+
+### Changed
+
+- **S3_PUBLIC_ENDPOINT default** - Now defaults to `http://localhost:8080/storage` for easier local testing
+
 ## [0.9.2] - 2025-12-10
 
 ### Fixed

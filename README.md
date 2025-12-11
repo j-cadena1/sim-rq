@@ -108,10 +108,28 @@ make clean        # Remove all containers
 
 Sim RQ exposes port **8080** only. Point your reverse proxy there:
 
-1. Start Sim RQ: `make prod`
-2. Configure proxy to forward to `http://<server>:8080`
-3. Set `CORS_ORIGIN=https://your-domain.com` in `.env`
-4. Restart: `make prod-down && make prod`
+1. Configure your reverse proxy to forward to `http://<server>:8080`
+2. Set environment variables in `.env`:
+
+   ```bash
+   CORS_ORIGIN=https://your-domain.com
+   S3_PUBLIC_ENDPOINT=https://your-domain.com/storage
+   ```
+
+3. Start Sim RQ: `make prod`
+
+### File Attachments
+
+File uploads/downloads use S3-compatible storage (Garage). The built-in nginx proxies `/storage/` requests to Garage, so browsers can access files through your public domain.
+
+**Required**: Set `S3_PUBLIC_ENDPOINT` to your public URL + `/storage`:
+
+```bash
+# In .env
+S3_PUBLIC_ENDPOINT=https://your-domain.com/storage
+```
+
+Without this, thumbnails will appear broken and file downloads will fail.
 
 ### Nginx Example
 

@@ -35,7 +35,11 @@ export const getSSOConfig = async (req: Request, res: Response) => {
 
     const isEnvConfigured = !!(envTenantId && envClientId && envClientSecret);
 
-    const result = await query('SELECT * FROM sso_configuration LIMIT 1');
+    const result = await query(`
+      SELECT *, client_secret_encrypted AS client_secret
+      FROM sso_configuration
+      LIMIT 1
+    `);
 
     // If SSO is configured via environment variables, return that config
     if (isEnvConfigured) {
@@ -56,7 +60,21 @@ export const getSSOConfig = async (req: Request, res: Response) => {
 
     // Otherwise, check database configuration
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'SSO configuration not found' });
+      // Return empty config instead of 404 - allows Settings page to load
+      logger.info('No SSO configuration found in database, returning empty config');
+      return res.json({
+        config: {
+          enabled: false,
+          tenantId: null,
+          clientId: null,
+          clientSecret: null,
+          redirectUri: null,
+          authority: null,
+          scopes: 'openid,profile,email',
+        },
+        isEnvConfigured: false,
+        isNew: true
+      });
     }
 
     const config = toCamelCase<SSOConfig>(result.rows[0]);
@@ -125,7 +143,11 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
     }
 
     // Get current config to check if we're updating the secret
-    const currentResult = await query('SELECT * FROM sso_configuration LIMIT 1');
+    const currentResult = await query(`
+      SELECT *, client_secret_encrypted AS client_secret
+      FROM sso_configuration
+      LIMIT 1
+    `);
     let secretToSave = currentResult.rows[0]?.client_secret;
 
     // Only update client_secret if a new one is provided (not masked)
@@ -146,19 +168,19 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
     const authorityToSave = authority || (tenantId ? `https://login.microsoftonline.com/${tenantId}` : null);
 
     // Update or insert configuration
-    const result = await query(
+    const updateResult = await query(
       `UPDATE sso_configuration
        SET enabled = $1,
            tenant_id = $2,
            client_id = $3,
-           client_secret = $4,
+           client_secret_encrypted = $4,
            redirect_uri = $5,
            authority = $6,
            scopes = $7,
            updated_by = $8,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = (SELECT id FROM sso_configuration LIMIT 1)
-       RETURNING *`,
+       RETURNING *, client_secret_encrypted AS client_secret`,
       [
         enabled,
         tenantId || null,
@@ -171,11 +193,11 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
       ]
     );
 
-    if (result.rows.length === 0) {
+    if (updateResult.rows.length === 0) {
       return res.status(404).json({ error: 'SSO configuration not found' });
     }
 
-    const config = toCamelCase<SSOConfig>(result.rows[0]);
+    const config = toCamelCase<SSOConfig>(updateResult.rows[0]);
 
     // Mask the client secret in response
     const safeConfig = {
