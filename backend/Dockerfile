@@ -23,8 +23,12 @@ FROM node:${NODE_VERSION}-alpine
 
 WORKDIR /app
 
-# Install ffmpeg for video processing and other dependencies
-RUN apk add --no-cache ffmpeg curl
+# Install dependencies:
+# - ffmpeg: video processing (compression, thumbnail extraction)
+# - vips: image processing (sharp uses libvips)
+# - libheif: HEIC/HEIF image support for sharp
+# - curl: health checks
+RUN apk add --no-cache ffmpeg vips libheif curl
 
 # Copy package files
 COPY package*.json ./

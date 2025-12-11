@@ -183,10 +183,31 @@ contexts/
 
 ## Testing
 
-- E2E tests in `tests/e2e/` (~86 tests) cover auth, roles, requests, lifecycle, analytics
-- Backend unit tests in `backend/src/services/__tests__/` (~78 tests)
+- **E2E tests**: `tests/e2e/` (13 spec files covering all major features)
+- **Backend unit tests**: `backend/src/services/__tests__/`
 - Rate limiting auto-disabled during `make test-e2e`
 - Test reports saved to `./playwright-report/` and `./test-results/`
+
+E2E test files by feature area:
+
+- `auth.spec.ts`, `roles.spec.ts` - Authentication and authorization
+- `requests.spec.ts`, `request-crud.spec.ts`, `lifecycle.spec.ts` - Request workflows
+- `projects.spec.ts`, `forms.spec.ts` - Project management
+- `dashboard.spec.ts`, `analytics.spec.ts`, `navigation.spec.ts` - UI/UX
+- `attachments.spec.ts` - File uploads
+- `notifications.spec.ts` - Real-time notifications
+- `health.spec.ts` - Health checks
+
+## Development Credentials
+
+**For local development only** (production uses Microsoft Entra ID SSO):
+
+| Role     | Email                      | Password     |
+|----------|----------------------------|--------------|
+| Admin    | `qadmin@sim-rq.local`      | `admin123`   |
+| Manager  | `bob@sim-rq.local`         | `manager123` |
+| Engineer | `charlie@sim-rq.local`     | `engineer123`|
+| End-User | `alice@sim-rq.local`       | `user123`    |
 
 ## File Attachments
 

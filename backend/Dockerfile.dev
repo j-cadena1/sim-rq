@@ -5,8 +5,13 @@ FROM node:${NODE_VERSION}-alpine
 
 WORKDIR /app
 
-# Install dependencies for native modules and ffmpeg for video processing
-RUN apk add --no-cache python3 make g++ ffmpeg curl
+# Install dependencies:
+# - python3/make/g++: native module compilation
+# - ffmpeg: video processing (compression, thumbnail extraction)
+# - vips-dev: image processing (sharp uses libvips)
+# - libheif-dev: HEIC/HEIF image support for sharp
+# - curl: health checks
+RUN apk add --no-cache python3 make g++ ffmpeg vips-dev libheif-dev curl
 
 # Copy package files
 COPY package*.json ./
