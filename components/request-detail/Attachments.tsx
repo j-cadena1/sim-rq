@@ -150,8 +150,12 @@ export const Attachments: React.FC<AttachmentsProps> = ({
           await uploadMutation.mutateAsync({ requestId, file });
         } catch (error) {
           // Extract error message from axios error response
-          const axiosError = error as { response?: { data?: { error?: string } } };
-          const serverMessage = axiosError?.response?.data?.error;
+          // Backend returns either { error: 'message' } or { error: { message: '...' } }
+          const axiosError = error as { response?: { data?: { error?: string | { message?: string } } } };
+          const errorData = axiosError?.response?.data?.error;
+          const serverMessage = typeof errorData === 'string'
+            ? errorData
+            : errorData?.message;
           setUploadError(serverMessage || `Failed to upload ${file.name}`);
         }
       }
