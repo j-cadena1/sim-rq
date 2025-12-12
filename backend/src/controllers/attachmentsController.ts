@@ -30,6 +30,7 @@ import {
 import {
   isStorageConnected,
   validateFile,
+  validateFileContent,
   generateStorageKey,
   uploadFile,
   getSignedDownloadUrl,
@@ -40,6 +41,7 @@ import {
   isMediaType,
   createPresignedUploadUrl,
   verifyUploadedFile,
+  getFileHead,
 } from '../services/storageService';
 import { processMediaAsync } from '../services/mediaProcessingService';
 
@@ -180,10 +182,16 @@ export const uploadAttachment = asyncHandler(async (req: Request, res: Response)
     throw new ValidationError('No file provided');
   }
 
-  // Validate file
+  // Validate file metadata (extension, size)
   const validation = validateFile(file.originalname, file.mimetype, file.size);
   if (!validation.valid) {
     throw new ValidationError(validation.error || 'Invalid file');
+  }
+
+  // Validate file content (magic bytes) to prevent extension spoofing
+  const contentValidation = await validateFileContent(file.buffer, file.originalname, file.mimetype);
+  if (!contentValidation.valid) {
+    throw new ValidationError(contentValidation.error || 'File content validation failed');
   }
 
   // Generate storage key and upload
@@ -619,6 +627,23 @@ export const completeUpload = asyncHandler(async (req: Request, res: Response) =
     throw new ValidationError(
       `File size mismatch: expected ${pending.file_size} bytes, got ${verification.size} bytes`
     );
+  }
+
+  // Validate file content (magic bytes) to prevent extension spoofing
+  // Fetch first 4KB from S3 for MIME detection
+  const headBuffer = await getFileHead(pending.storage_key, 4096);
+  if (headBuffer) {
+    const contentValidation = await validateFileContent(
+      headBuffer,
+      pending.original_file_name,
+      pending.content_type
+    );
+    if (!contentValidation.valid) {
+      // Delete the invalid file from S3 and pending record
+      await deleteFile(pending.storage_key);
+      await query('DELETE FROM pending_uploads WHERE id = $1', [uploadId]);
+      throw new ValidationError(contentValidation.error || 'File content validation failed');
+    }
   }
 
   // Create attachment record

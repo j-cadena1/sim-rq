@@ -244,7 +244,7 @@ make test         # Unit tests (backend + frontend in containers)
 make test-e2e     # E2E tests (Playwright in container)
 ```
 
-**Test suite:** 102 tests total (86 E2E + 16 backend unit tests) covering auth, roles, requests, lifecycle, analytics, forms, navigation, and notifications.
+**Test suite:** 543 tests total (120 E2E + 423 backend unit tests) covering auth, roles, requests, lifecycle, analytics, forms, navigation, and notifications.
 
 Test reports are saved to `./playwright-report/` and `./test-results/`.
 

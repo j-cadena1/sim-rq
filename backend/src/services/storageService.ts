@@ -18,6 +18,7 @@ import {
   ListObjectsV2Command,
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
+import { fileTypeFromBuffer } from 'file-type';
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'stream';
@@ -212,6 +213,117 @@ export function validateFile(
   }
 
   return { valid: true };
+}
+
+// Map of allowed extensions to expected MIME type prefixes for content validation
+const EXTENSION_MIME_MAP: Record<string, string[]> = {
+  // Documents
+  pdf: ['application/pdf'],
+  doc: ['application/msword'],
+  docx: ['application/vnd.openxmlformats-officedocument.wordprocessingml'],
+  xls: ['application/vnd.ms-excel'],
+  xlsx: ['application/vnd.openxmlformats-officedocument.spreadsheetml'],
+  ppt: ['application/vnd.ms-powerpoint'],
+  pptx: ['application/vnd.openxmlformats-officedocument.presentationml'],
+  // Images
+  png: ['image/png'],
+  jpg: ['image/jpeg'],
+  jpeg: ['image/jpeg'],
+  gif: ['image/gif'],
+  webp: ['image/webp'],
+  heic: ['image/heic'],
+  heif: ['image/heif'],
+  // Video
+  mp4: ['video/mp4'],
+  mov: ['video/quicktime'],
+  avi: ['video/x-msvideo', 'video/avi'],
+  webm: ['video/webm'],
+  mkv: ['video/x-matroska'],
+  m4v: ['video/x-m4v', 'video/mp4'],
+  // Archives
+  zip: ['application/zip', 'application/x-zip-compressed'],
+};
+
+// Extensions that are text-based and don't have magic bytes
+const TEXT_EXTENSIONS = ['txt', 'csv', 'json', 'xml', 'md', 'svg'];
+
+/**
+ * Validate file content by checking magic bytes against declared MIME type
+ * This prevents attackers from disguising malicious files with safe extensions
+ */
+export async function validateFileContent(
+  buffer: Buffer,
+  fileName: string,
+  _declaredMime: string
+): Promise<{ valid: boolean; error?: string; detectedMime?: string }> {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+
+  // Text files have no magic bytes - skip content validation
+  if (ext && TEXT_EXTENSIONS.includes(ext)) {
+    return { valid: true };
+  }
+
+  // Need at least some bytes to detect file type
+  if (buffer.length < 12) {
+    logger.warn(`File ${fileName} too small for MIME detection (${buffer.length} bytes)`);
+    return { valid: true }; // Allow but log warning
+  }
+
+  const detected = await fileTypeFromBuffer(buffer);
+  if (!detected) {
+    // No magic bytes detected - could be text file or unknown format
+    logger.warn(`Could not detect MIME type for ${fileName}, allowing upload`);
+    return { valid: true };
+  }
+
+  // Check if detected MIME matches expected for extension
+  const expectedMimes = ext ? EXTENSION_MIME_MAP[ext] : [];
+  if (expectedMimes?.length && !expectedMimes.some((m) => detected.mime.startsWith(m))) {
+    logger.warn(
+      `File content mismatch for ${fileName}: detected ${detected.mime}, expected one of ${expectedMimes.join(', ')}`
+    );
+    return {
+      valid: false,
+      error: `File content (${detected.mime}) does not match extension .${ext}`,
+      detectedMime: detected.mime,
+    };
+  }
+
+  return { valid: true, detectedMime: detected.mime };
+}
+
+/**
+ * Fetch the first N bytes of a file from S3 for MIME validation
+ * Used for direct S3 uploads where we don't have the buffer
+ */
+export async function getFileHead(key: string, bytes: number): Promise<Buffer | null> {
+  if (!s3Client || !isConnected) {
+    return null;
+  }
+
+  try {
+    const response = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Range: `bytes=0-${bytes - 1}`,
+      })
+    );
+
+    if (!response.Body) {
+      return null;
+    }
+
+    // Convert stream to buffer
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  } catch (error) {
+    logger.warn(`Failed to fetch file head for ${key}:`, error);
+    return null;
+  }
 }
 
 /**

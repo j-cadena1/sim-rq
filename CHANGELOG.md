@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- markdownlint-disable MD024 -->
 
+## [0.9.6] - 2025-12-12
+
+### Security
+
+- **MIME type validation** - File uploads now verify content matches extension using magic bytes
+  - Prevents attackers from disguising malicious files (e.g., `malware.exe` renamed to `document.pdf`)
+  - Uses `file-type` library to detect actual file format from first 4KB
+  - Validates both buffer uploads and direct S3 uploads
+- **Production S3 credential validation** - Server refuses to start in production with default dev credentials
+  - Prevents accidental deployment with insecure storage configuration
+  - Follows existing pattern for DB_PASSWORD and ENTRA_SSO_ENCRYPTION_KEY validation
+
+### Added
+
+- **Dependabot configuration** - Automated weekly dependency scanning for security vulnerabilities
+  - Monitors both frontend (`/`) and backend (`/backend`) npm packages
+  - Opens PRs automatically when updates are available
+
+### Changed
+
+- **Updated npm dependencies** - Security-relevant packages updated:
+  - axios: 1.6.2 → 1.13.2 (security patches)
+  - isomorphic-dompurify: 2.9.0 → 2.34.0
+  - zod: 3.22.4 → 3.25.76
+
+### Documentation
+
+- Updated test counts: 543 tests total (120 E2E + 423 backend unit tests)
+
 ## [0.9.5] - 2025-12-12
 
 ### Added
@@ -294,6 +323,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Analytics dashboard tests
 - Navigation and UI tests
 
+[0.9.6]: https://github.com/j-cadena1/sim-rq/releases/tag/v0.9.6
+[0.9.5]: https://github.com/j-cadena1/sim-rq/releases/tag/v0.9.5
 [0.9.4]: https://github.com/j-cadena1/sim-rq/releases/tag/v0.9.4
 [0.9.3]: https://github.com/j-cadena1/sim-rq/releases/tag/v0.9.3
 [0.9.2]: https://github.com/j-cadena1/sim-rq/releases/tag/v0.9.2

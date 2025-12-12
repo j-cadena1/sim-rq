@@ -39,6 +39,24 @@ export function validateConfig(): ConfigValidationResult {
     }
   }
 
+  // Validate S3 credentials (if storage is enabled)
+  const s3AccessKey = process.env.S3_ACCESS_KEY_ID;
+  const s3SecretKey = process.env.S3_SECRET_ACCESS_KEY;
+
+  if (s3AccessKey) {
+    const defaultDevAccessKey = 'GK0000000000000000deadbeef';
+    const defaultDevSecretKey = '0000000000000000000000000000000000000000000000000000000000000001';
+
+    if (s3AccessKey === defaultDevAccessKey || s3SecretKey === defaultDevSecretKey) {
+      const message = 'S3 credentials use default development values. Generate unique credentials for production.';
+      if (isProduction) {
+        errors.push(message);
+      } else {
+        warnings.push(message);
+      }
+    }
+  }
+
   // Validate ENTRA_SSO_ENCRYPTION_KEY (required for SSO if SSO is enabled)
   // Note: The encryption service will fail fast if this is missing and SSO is configured
   // This validation provides early warning about the requirement

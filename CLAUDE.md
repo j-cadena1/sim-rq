@@ -52,6 +52,13 @@ Type check backend:
 docker compose -f docker-compose.dev.yaml exec backend npx tsc --noEmit
 ```
 
+Run arbitrary commands in containers:
+
+```bash
+docker compose -f docker-compose.dev.yaml exec backend <command>
+docker compose -f docker-compose.dev.yaml exec frontend <command>
+```
+
 ## Architecture Overview
 
 ### Stack
@@ -135,11 +142,15 @@ backend/src/
 │   ├── sessionService.ts           # Session management with atomic locking
 │   ├── storageService.ts           # S3-compatible file storage (Garage)
 │   ├── notificationService.ts      # In-app real-time notifications (WebSocket)
+│   ├── websocketService.ts         # Socket.IO connection management
 │   ├── emailService.ts             # SMTP email sending (optional)
 │   ├── emailDigestService.ts       # Batched email digests (hourly/daily/weekly)
 │   ├── redisService.ts             # Redis connection (optional)
 │   ├── auditService.ts             # Audit log tracking
-│   └── msalService.ts              # Microsoft Entra ID PKCE auth
+│   ├── msalService.ts              # Microsoft Entra ID PKCE auth
+│   ├── encryptionService.ts        # SSO credential encryption
+│   ├── cleanupService.ts           # Session/token cleanup jobs
+│   └── mediaProcessingService.ts   # Video/image thumbnail generation
 ├── middleware/      # Auth, rate limiting, validation, logging
 └── db/              # Database connection pool
 ```
@@ -183,8 +194,8 @@ contexts/
 
 ## Testing
 
-- **E2E tests**: `tests/e2e/` (13 spec files covering all major features)
-- **Backend unit tests**: `backend/src/services/__tests__/`
+- **E2E tests**: `tests/e2e/` (13 spec files, 120 tests covering all major features)
+- **Backend unit tests**: `backend/src/services/__tests__/` (423 tests)
 - Rate limiting auto-disabled during `make test-e2e`
 - Test reports saved to `./playwright-report/` and `./test-results/`
 
