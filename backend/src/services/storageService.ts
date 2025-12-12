@@ -316,7 +316,12 @@ export async function createPresignedUploadUrl(
     ContentLength: contentLength,
   });
 
-  const uploadUrl = await getSignedUrl(publicS3Client, command, { expiresIn });
+  // Disable automatic checksum headers - S3-compatible services like Garage
+  // don't handle AWS SDK v3's x-amz-checksum-* headers correctly
+  const uploadUrl = await getSignedUrl(publicS3Client, command, {
+    expiresIn,
+    unhoistableHeaders: new Set(['x-amz-checksum-crc32']),
+  });
 
   return { uploadUrl, expiresAt };
 }
