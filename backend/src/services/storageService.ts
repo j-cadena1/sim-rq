@@ -18,7 +18,7 @@ import {
   ListObjectsV2Command,
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
-import { fileTypeFromBuffer } from 'file-type';
+// file-type is ESM-only, imported dynamically in validateFileContent()
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'stream';
@@ -269,6 +269,8 @@ export async function validateFileContent(
     return { valid: true }; // Allow but log warning
   }
 
+  // Dynamic import for ESM-only module
+  const { fileTypeFromBuffer } = await import('file-type');
   const detected = await fileTypeFromBuffer(buffer);
   if (!detected) {
     // No magic bytes detected - could be text file or unknown format
