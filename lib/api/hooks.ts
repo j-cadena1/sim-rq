@@ -1020,13 +1020,19 @@ export const useDirectUpload = () => {
   /**
    * Fallback: Upload via backend using XHR for reliable progress tracking
    * Uses XHR instead of axios to avoid timeout issues with large files
+   *
+   * @param skipInitProgress - If true, don't reset progress to 0% (used when falling back from direct upload)
    */
   const uploadViaBackend = async (
     requestId: string,
     file: File,
-    onProgress?: (progress: DirectUploadProgress) => void
+    onProgress?: (progress: DirectUploadProgress) => void,
+    skipInitProgress = false
   ): Promise<Attachment> => {
-    onProgress?.({ phase: 'uploading', percent: 0 });
+    // Only reset progress if this is the primary path, not a fallback
+    if (!skipInitProgress) {
+      onProgress?.({ phase: 'uploading', percent: 0 });
+    }
 
     const formData = new FormData();
     formData.append('file', file);
@@ -1107,9 +1113,9 @@ export const useDirectUpload = () => {
       );
       initData = response.data;
     } catch (initError) {
-      // If init fails, fall back to legacy upload
+      // If init fails, fall back to legacy upload (don't reset progress)
       console.warn('[Upload] Direct upload init failed, using backend upload:', initError);
-      return uploadViaBackend(requestId, file, onProgress);
+      return uploadViaBackend(requestId, file, onProgress, false);
     }
 
     activeUploadId = initData.uploadId;
@@ -1172,9 +1178,9 @@ export const useDirectUpload = () => {
         activeUploadId = null;
       }
 
-      // Fall back to legacy upload
+      // Fall back to legacy upload (skip reset since we already showed progress)
       console.warn('[Upload] Direct S3 upload failed, using backend upload:', uploadError);
-      return uploadViaBackend(requestId, file, onProgress);
+      return uploadViaBackend(requestId, file, onProgress, true);
     }
 
     // Phase 3: Complete upload - create attachment record
