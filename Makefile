@@ -301,22 +301,33 @@ test-e2e:
 	@echo "🎭 Running E2E tests with Playwright (in container)..."
 	@echo ""
 	@# Enable DISABLE_RATE_LIMITING for E2E tests to avoid rate limit issues
+	@# Detect SSL mode by checking for SSL frontend container and include overlay if needed
 	@if docker compose -p sim-rq-prod ps --quiet frontend 2>/dev/null | grep -q .; then \
 		echo "📦 Running against production environment..."; \
+		SSL_OVERLAY=""; \
+		if docker ps --format '{{.Names}}' | grep -q 'sim-rq-frontend-ssl$$'; then \
+			echo "🔒 SSL mode detected - preserving SSL configuration"; \
+			SSL_OVERLAY="-f docker-compose.ssl.yaml"; \
+		fi; \
 		echo "🔓 Restarting backend with rate limiting disabled for tests..."; \
-		DISABLE_RATE_LIMITING=true docker compose -p sim-rq-prod up -d backend; \
+		DISABLE_RATE_LIMITING=true docker compose -p sim-rq-prod $$SSL_OVERLAY up -d backend; \
 		sleep 5; \
-		docker compose -p sim-rq-prod --profile e2e run --rm playwright; \
+		docker compose -p sim-rq-prod $$SSL_OVERLAY --profile e2e run --rm playwright; \
 		echo "🔒 Restarting backend with normal rate limiting..."; \
-		docker compose -p sim-rq-prod up -d backend; \
+		docker compose -p sim-rq-prod $$SSL_OVERLAY up -d backend frontend; \
 	elif docker compose -p sim-rq-dev -f docker-compose.dev.yaml ps --quiet frontend 2>/dev/null | grep -q .; then \
 		echo "📦 Running against development environment..."; \
+		SSL_OVERLAY=""; \
+		if docker ps --format '{{.Names}}' | grep -q 'sim-rq-frontend-ssl-dev'; then \
+			echo "🔒 SSL mode detected - preserving SSL configuration"; \
+			SSL_OVERLAY="-f docker-compose.ssl-dev.yaml"; \
+		fi; \
 		echo "🔓 Restarting backend with rate limiting disabled for tests..."; \
-		DISABLE_RATE_LIMITING=true docker compose -p sim-rq-dev -f docker-compose.dev.yaml up -d backend; \
+		DISABLE_RATE_LIMITING=true docker compose -p sim-rq-dev -f docker-compose.dev.yaml $$SSL_OVERLAY up -d backend; \
 		sleep 5; \
-		docker compose -p sim-rq-dev -f docker-compose.dev.yaml --profile e2e run --rm playwright; \
+		docker compose -p sim-rq-dev -f docker-compose.dev.yaml $$SSL_OVERLAY --profile e2e run --rm playwright; \
 		echo "🔒 Restarting backend with normal rate limiting..."; \
-		docker compose -p sim-rq-dev -f docker-compose.dev.yaml up -d backend; \
+		docker compose -p sim-rq-dev -f docker-compose.dev.yaml $$SSL_OVERLAY up -d backend frontend; \
 	else \
 		echo "❌ No Sim RQ environment running!"; \
 		echo "   Start with: make prod  or  make dev"; \
