@@ -30,6 +30,8 @@ coverage
 
 # Data directories (bind mounts - may have restricted permissions)
 data
+data-dev
+data-prod
 
 # Misc
 README.md

@@ -2,9 +2,9 @@
 # Hot-reload enabled, source mounted as volumes, debugging ports exposed
 #
 # Data Storage:
-#   All persistent data is stored in ./data/ directory (bind mounts)
-#   - ./data/postgres/  - PostgreSQL database files
-#   - ./data/garage/    - S3-compatible file storage
+#   All persistent data is stored in ./data-dev/ directory (bind mounts)
+#   - ./data-dev/postgres/  - PostgreSQL database files
+#   - ./data-dev/garage/    - S3-compatible file storage
 #
 # Usage:
 #   make dev        # Start dev environment with hot reload
@@ -32,8 +32,8 @@ services:
       GARAGE_ZONE: dc1
       GARAGE_CAPACITY: 10G
     volumes:
-      - ./data/garage/data:/var/lib/garage/data
-      - ./data/garage/meta:/var/lib/garage/meta
+      - ./data-dev/garage/data:/var/lib/garage/data
+      - ./data-dev/garage/meta:/var/lib/garage/meta
       - ./garage.toml:/etc/garage.toml:ro
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:3903/health"]
@@ -66,6 +66,7 @@ services:
     image: postgres:${POSTGRES_VERSION:-16}-alpine
     container_name: sim-rq-db-dev
     environment:
+      TZ: America/Toronto
       POSTGRES_DB: sim-rq
       POSTGRES_USER: sim-rq_user
       POSTGRES_PASSWORD: ${DB_PASSWORD:-SimRQ2025!Secure}
@@ -73,7 +74,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      - ./data-dev/postgres:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
     healthcheck:
@@ -96,6 +97,7 @@ services:
     image: sim-rq-backend:dev
     container_name: sim-rq-api-dev
     environment:
+      TZ: America/Toronto
       NODE_ENV: development
       DB_HOST: postgres
       DB_PORT: 5432

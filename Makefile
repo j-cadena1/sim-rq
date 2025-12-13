@@ -40,7 +40,7 @@ help:
 
 dev:
 	@echo "🚀 Starting development environment..."
-	docker compose -f docker-compose.dev.yaml up -d
+	docker compose -p sim-rq-dev -f docker-compose.dev.yaml up -d
 	@echo "✅ Development environment started!"
 	@echo ""
 	@echo "   Frontend: http://localhost:5173"
@@ -51,16 +51,16 @@ dev:
 
 dev-build:
 	@echo "🔨 Building development environment..."
-	docker compose -f docker-compose.dev.yaml up -d --build
+	docker compose -p sim-rq-dev -f docker-compose.dev.yaml up -d --build
 	@echo "✅ Development environment rebuilt and started!"
 
 dev-logs:
 	@echo "📋 Showing development logs (Ctrl+C to exit)..."
-	docker compose -f docker-compose.dev.yaml logs -f
+	docker compose -p sim-rq-dev -f docker-compose.dev.yaml logs -f
 
 dev-down:
 	@echo "🛑 Stopping development environment..."
-	docker compose -f docker-compose.dev.yaml down
+	docker compose -p sim-rq-dev -f docker-compose.dev.yaml down
 	@echo "✅ Development environment stopped"
 
 # ============================================================================
@@ -69,28 +69,25 @@ dev-down:
 
 prod:
 	@echo "🏭 Starting production environment..."
-	docker compose up -d
+	docker compose -p sim-rq-prod up -d
 	@echo "✅ Production environment started!"
 	@echo ""
 	@echo "   Application: http://localhost:8080"
-	@echo "   API:         http://localhost:3001"
-	@echo "   Metrics:     http://localhost:3001/metrics"
-	@echo "   API Docs:    http://localhost:3001/api-docs"
 	@echo ""
 	@echo "   Run 'make prod-logs' to view logs"
 
 prod-build:
 	@echo "🔨 Building production environment..."
-	docker compose up -d --build
+	docker compose -p sim-rq-prod up -d --build
 	@echo "✅ Production environment rebuilt and started!"
 
 prod-logs:
 	@echo "📋 Showing production logs (Ctrl+C to exit)..."
-	docker compose logs -f
+	docker compose -p sim-rq-prod logs -f
 
 prod-down:
 	@echo "🛑 Stopping production environment..."
-	docker compose down
+	docker compose -p sim-rq-prod down
 	@echo "✅ Production environment stopped"
 
 # ============================================================================
@@ -101,31 +98,31 @@ test:
 	@echo "🧪 Running unit tests..."
 	@echo ""
 	@echo "Backend tests:"
-	docker compose -f docker-compose.dev.yaml exec backend npm test
+	docker compose -p sim-rq-dev -f docker-compose.dev.yaml exec backend npm test
 	@echo ""
 	@echo "Frontend tests:"
-	docker compose -f docker-compose.dev.yaml exec frontend npm test
+	docker compose -p sim-rq-dev -f docker-compose.dev.yaml exec frontend npm test
 
 test-e2e:
 	@echo "🎭 Running E2E tests with Playwright (in container)..."
 	@echo ""
 	@# Enable DISABLE_RATE_LIMITING for E2E tests to avoid rate limit issues
-	@if docker compose ps --quiet frontend 2>/dev/null | grep -q .; then \
+	@if docker compose -p sim-rq-prod ps --quiet frontend 2>/dev/null | grep -q .; then \
 		echo "📦 Running against production environment..."; \
 		echo "🔓 Restarting backend with rate limiting disabled for tests..."; \
-		DISABLE_RATE_LIMITING=true docker compose up -d backend; \
+		DISABLE_RATE_LIMITING=true docker compose -p sim-rq-prod up -d backend; \
 		sleep 5; \
-		docker compose --profile e2e run --rm playwright; \
+		docker compose -p sim-rq-prod --profile e2e run --rm playwright; \
 		echo "🔒 Restarting backend with normal rate limiting..."; \
-		docker compose up -d backend; \
-	elif docker compose -f docker-compose.dev.yaml ps --quiet frontend 2>/dev/null | grep -q .; then \
+		docker compose -p sim-rq-prod up -d backend; \
+	elif docker compose -p sim-rq-dev -f docker-compose.dev.yaml ps --quiet frontend 2>/dev/null | grep -q .; then \
 		echo "📦 Running against development environment..."; \
 		echo "🔓 Restarting backend with rate limiting disabled for tests..."; \
-		DISABLE_RATE_LIMITING=true docker compose -f docker-compose.dev.yaml up -d backend; \
+		DISABLE_RATE_LIMITING=true docker compose -p sim-rq-dev -f docker-compose.dev.yaml up -d backend; \
 		sleep 5; \
-		docker compose -f docker-compose.dev.yaml --profile e2e run --rm playwright; \
+		docker compose -p sim-rq-dev -f docker-compose.dev.yaml --profile e2e run --rm playwright; \
 		echo "🔒 Restarting backend with normal rate limiting..."; \
-		docker compose -f docker-compose.dev.yaml up -d backend; \
+		docker compose -p sim-rq-dev -f docker-compose.dev.yaml up -d backend; \
 	else \
 		echo "❌ No Sim RQ environment running!"; \
 		echo "   Start with: make prod  or  make dev"; \
@@ -137,7 +134,7 @@ test-e2e:
 
 test-e2e-build:
 	@echo "🔨 Building Playwright container..."
-	docker compose --profile e2e build playwright
+	docker compose -p sim-rq-dev -f docker-compose.dev.yaml --profile e2e build playwright
 	@echo "✅ Playwright container built!"
 
 # ============================================================================
@@ -149,21 +146,21 @@ db-shell:
 	@echo "   Database: sim-rq"
 	@echo "   User: sim-rq_user"
 	@echo ""
-	@docker compose exec postgres psql -U sim-rq_user -d sim-rq || \
-	 docker compose -f docker-compose.dev.yaml exec postgres psql -U sim-rq_user -d sim-rq
+	@docker compose -p sim-rq-prod exec postgres psql -U sim-rq_user -d sim-rq || \
+	 docker compose -p sim-rq-dev -f docker-compose.dev.yaml exec postgres psql -U sim-rq_user -d sim-rq
 
 db-backup:
 	@echo "💾 Backing up database..."
-	@docker compose exec postgres pg_dump -U sim-rq_user sim-rq > backup.sql 2>/dev/null || \
-	 docker compose -f docker-compose.dev.yaml exec postgres pg_dump -U sim-rq_user sim-rq > backup.sql
+	@docker compose -p sim-rq-prod exec postgres pg_dump -U sim-rq_user sim-rq > backup.sql 2>/dev/null || \
+	 docker compose -p sim-rq-dev -f docker-compose.dev.yaml exec postgres pg_dump -U sim-rq_user sim-rq > backup.sql
 	@echo "✅ Database backed up to backup.sql"
 
 db-restore:
 	@echo "⚠️  Restoring database from backup.sql..."
 	@echo "   This will OVERWRITE current data. Press Ctrl+C to cancel."
 	@sleep 3
-	@docker compose exec -T postgres psql -U sim-rq_user sim-rq < backup.sql 2>/dev/null || \
-	 docker compose -f docker-compose.dev.yaml exec -T postgres psql -U sim-rq_user sim-rq < backup.sql
+	@docker compose -p sim-rq-prod exec -T postgres psql -U sim-rq_user sim-rq < backup.sql 2>/dev/null || \
+	 docker compose -p sim-rq-dev -f docker-compose.dev.yaml exec -T postgres psql -U sim-rq_user sim-rq < backup.sql
 	@echo "✅ Database restored from backup.sql"
 
 # ============================================================================
@@ -174,10 +171,10 @@ status:
 	@echo "📊 Container Status:"
 	@echo ""
 	@echo "Production:"
-	@docker compose ps 2>/dev/null || echo "  (not running)"
+	@docker compose -p sim-rq-prod ps 2>/dev/null || echo "  (not running)"
 	@echo ""
 	@echo "Development:"
-	@docker compose -f docker-compose.dev.yaml ps 2>/dev/null || echo "  (not running)"
+	@docker compose -p sim-rq-dev -f docker-compose.dev.yaml ps 2>/dev/null || echo "  (not running)"
 
 clean:
 	@echo "⚠️  This will remove ALL Sim RQ containers, volumes, and images!"
@@ -185,8 +182,8 @@ clean:
 	@sleep 5
 	@echo ""
 	@echo "🧹 Cleaning up..."
-	-docker compose down -v 2>/dev/null
-	-docker compose -f docker-compose.dev.yaml down -v 2>/dev/null
+	-docker compose -p sim-rq-prod down -v 2>/dev/null
+	-docker compose -p sim-rq-dev -f docker-compose.dev.yaml down -v 2>/dev/null
 	-docker rmi sim-rq-frontend:latest sim-rq-backend:latest 2>/dev/null
 	-docker rmi sim-rq-frontend:dev sim-rq-backend:dev 2>/dev/null
 	@echo "✅ Cleanup complete!"

@@ -37,6 +37,8 @@ database/backups/
 
 # Docker data directories (bind mounts)
 data/
+data-dev/
+data-prod/
 
 # Testing
 coverage/
