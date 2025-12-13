@@ -372,12 +372,16 @@ describe('AuthContext', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      await expect(
-        act(async () => {
+      let thrownError: Error | null = null;
+      await act(async () => {
+        try {
           await result.current.login('test@example.com', 'wrong-password');
-        })
-      ).rejects.toThrow('Invalid credentials');
+        } catch (err) {
+          thrownError = err as Error;
+        }
+      });
 
+      expect(thrownError?.message).toBe('Invalid credentials');
       expect(result.current.error).toBe('Invalid credentials');
       expect(result.current.user).toBeNull();
     });

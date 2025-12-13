@@ -10,15 +10,17 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     // Frontend tests only - backend tests run separately via backend/vitest.config.ts
     include: [
-      'src/**/*.test.ts',
-      'src/**/*.test.tsx',
-      'components/**/*.test.tsx',
-      'utils/**/*.test.ts',
+      './src/**/*.test.ts',
+      './src/**/*.test.tsx',
+      './components/**/*.test.tsx',
+      './contexts/**/*.test.tsx',
+      './utils/**/*.test.ts',
     ],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
       '**/backend/**',
+      './backend/**',
     ],
     coverage: {
       provider: 'v8',
@@ -34,6 +36,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  // Prevent vite from accessing backend directory
+  server: {
+    fs: {
+      deny: ['backend/**', '**/backend/**'],
     },
   },
 });
