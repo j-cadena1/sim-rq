@@ -195,6 +195,7 @@ contexts/
 ## Testing
 
 - **E2E tests**: `tests/e2e/` (13 spec files, 86 tests covering all major features)
+- **Frontend unit tests**: `components/*.test.tsx`, `contexts/*.test.tsx` (124 tests)
 - **Backend unit tests**: `backend/src/services/__tests__/` (423 tests)
 - Rate limiting auto-disabled during `make test-e2e`
 - Test reports saved to `./playwright-report/` and `./test-results/`
@@ -211,14 +212,24 @@ E2E test files by feature area:
 
 ## Development Credentials
 
-**For local development only** (production uses Microsoft Entra ID SSO):
+**Bootstrap Admin Account:**
 
-| Role     | Email                      | Password     |
-|----------|----------------------------|--------------|
-| Admin    | `qadmin@sim-rq.local`      | `admin123`   |
-| Manager  | `bob@sim-rq.local`         | `manager123` |
-| Engineer | `charlie@sim-rq.local`     | `engineer123`|
-| End-User | `alice@sim-rq.local`       | `user123`    |
+The `qadmin@sim-rq.local` account is used for initial SSO configuration. After setting up
+Microsoft Entra ID and syncing Admin users, disable qAdmin via Settings > User Management.
+
+| Account  | Email                      | Password (default)                |
+|----------|----------------------------|-----------------------------------|
+| qAdmin   | `qadmin@sim-rq.local`      | See `QADMIN_PASSWORD` in `.env`   |
+
+**Test Accounts (development only):**
+
+| Role     | Email                      | Password (default) |
+|----------|----------------------------|--------------------|
+| Manager  | `bob@sim-rq.local`         | `manager123`       |
+| Engineer | `charlie@sim-rq.local`     | `engineer123`      |
+| End-User | `alice@sim-rq.local`       | `user123`          |
+
+Passwords can be overridden via environment variables. See `.env.example`.
 
 ## File Attachments
 

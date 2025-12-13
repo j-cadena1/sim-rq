@@ -186,9 +186,10 @@ You can import this specification into:
 **Login:**
 
 ```bash
+# Replace <password> with QADMIN_PASSWORD from your .env file
 curl -c cookies.txt -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"qadmin@sim-rq.local","password":"admin123"}'
+  -d '{"email":"qadmin@sim-rq.local","password":"<password>"}'
 ```
 
 **Make authenticated request:**

@@ -71,7 +71,7 @@ async function notifyProcessingProgress(
       requestId,
       percent: Math.round(percent),
     });
-  } catch (error) {
+  } catch {
     // Don't fail processing if notification fails
   }
 }

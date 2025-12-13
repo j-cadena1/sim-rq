@@ -8,7 +8,18 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     setupFiles: './src/test/setup.ts',
-    include: ['**/*.test.ts', '**/*.test.tsx'],
+    // Frontend tests only - backend tests run separately via backend/vitest.config.ts
+    include: [
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'components/**/*.test.tsx',
+      'utils/**/*.test.ts',
+    ],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/backend/**',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

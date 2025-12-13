@@ -12,7 +12,13 @@ let ENCRYPTION_KEY: Buffer | null = null;
 
 // PBKDF2 parameters for key derivation (when plaintext key is provided)
 const PBKDF2_ITERATIONS = 100000; // OWASP recommended minimum
-const PBKDF2_SALT = 'sim-rq-encryption-v1'; // Static salt (key already has entropy)
+
+// Static salt is acceptable here because:
+// 1. Primary path uses pre-derived 32-byte key directly (no PBKDF2 needed)
+// 2. PBKDF2 fallback only used for plaintext keys, which logs a warning
+// 3. Changing salt would break existing encrypted SSO secrets
+// 4. The encryption key itself already has sufficient entropy
+const PBKDF2_SALT = 'sim-rq-encryption-v1';
 
 // Derive a 32-byte key from the environment variable (lazy-loaded on first use)
 function getEncryptionKey(): Buffer {

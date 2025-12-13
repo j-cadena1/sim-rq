@@ -3,11 +3,35 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SimRQProvider } from '../contexts/SimRQContext';
+import { NotificationProvider } from '../contexts/NotificationContext';
 import { ModalProvider } from './Modal';
 import { ToastProvider } from './Toast';
 import { RequestDetail } from './RequestDetail';
 import { UserRole, RequestStatus, type User, type SimRequest } from '../types';
 import { vi } from 'vitest';
+
+// Mock axios for NotificationContext API calls - use hoisted to ensure proper initialization
+const { mockAxiosInstance } = vi.hoisted(() => {
+  const mockFn = () => ({
+    get: vi.fn().mockResolvedValue({ data: { notifications: [], unreadCount: 0, hasMore: false } }),
+    post: vi.fn().mockResolvedValue({ data: {} }),
+    patch: vi.fn().mockResolvedValue({ data: {} }),
+    delete: vi.fn().mockResolvedValue({ data: {} }),
+    interceptors: {
+      request: { use: vi.fn(), eject: vi.fn() },
+      response: { use: vi.fn(), eject: vi.fn() },
+    },
+  });
+  return { mockAxiosInstance: mockFn() };
+});
+
+vi.mock('axios', () => ({
+  default: {
+    create: vi.fn(() => mockAxiosInstance),
+    get: vi.fn().mockResolvedValue({ data: { notifications: [], unreadCount: 0, hasMore: false } }),
+    patch: vi.fn().mockResolvedValue({ data: {} }),
+  },
+}));
 
 // Test mock data
 const MOCK_USERS: User[] = [
@@ -97,15 +121,17 @@ const renderComponent = (id: string) => {
   return render(
     <QueryClientProvider client={queryClient}>
       <SimRQProvider>
-        <ModalProvider>
-          <ToastProvider>
-            <MemoryRouter initialEntries={[`/requests/${id}`]}>
-              <Routes>
-                <Route path="/requests/:id" element={<RequestDetail />} />
-              </Routes>
-            </MemoryRouter>
-          </ToastProvider>
-        </ModalProvider>
+        <NotificationProvider>
+          <ModalProvider>
+            <ToastProvider>
+              <MemoryRouter initialEntries={[`/requests/${id}`]}>
+                <Routes>
+                  <Route path="/requests/:id" element={<RequestDetail />} />
+                </Routes>
+              </MemoryRouter>
+            </ToastProvider>
+          </ModalProvider>
+        </NotificationProvider>
       </SimRQProvider>
     </QueryClientProvider>
   );

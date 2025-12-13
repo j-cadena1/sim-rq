@@ -1,4 +1,5 @@
 import { chromium, FullConfig } from '@playwright/test';
+import { TEST_USERS } from './helpers/auth';
 
 /**
  * Global Setup for Playwright E2E Tests
@@ -29,8 +30,8 @@ async function globalSetup(config: FullConfig) {
     // Call the login API directly to get session cookies
     const response = await page.request.post(`${url}/api/auth/login`, {
       data: {
-        email: 'qadmin@sim-rq.local',
-        password: 'admin123',
+        email: TEST_USERS.admin.email,
+        password: TEST_USERS.admin.password,
       },
     });
 

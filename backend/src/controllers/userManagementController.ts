@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { query } from '../db';
 import { logger } from '../middleware/logger';
 import { toCamelCase } from '../utils/caseConverter';
+import { BCRYPT_ROUNDS } from '../config/security';
 import { getDirectoryUsers, syncUserFromDirectory } from '../services/graphService';
 import { logRequestAudit, AuditAction, EntityType } from '../services/auditService';
 import { sendNotification } from '../services/notificationHelpers';
@@ -293,9 +294,16 @@ export const getEntraIDDirectoryUsers = async (req: Request, res: Response) => {
 
     const graphError = error as GraphApiError;
     if (graphError.response?.data?.error?.message) {
-      return res.status(graphError.response.status || 500).json({
-        error: 'Microsoft Graph API error',
-        details: graphError.response.data.error.message,
+      // Log full error details for debugging (not exposed to client)
+      logger.error('Microsoft Graph API error details:', {
+        status: graphError.response.status,
+        message: graphError.response.data.error.message,
+      });
+
+      // Return generic message to client to avoid exposing internal API details
+      return res.status(graphError.response.status || 502).json({
+        error: 'Failed to communicate with Microsoft Entra ID',
+        code: 'EXTERNAL_SERVICE_ERROR',
       });
     }
 
@@ -772,7 +780,7 @@ export const changeQAdminPassword = async (req: Request, res: Response) => {
     // If user is a different Admin, they can change it without knowing current password
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
 
     // Update password
     await query(

@@ -14,28 +14,35 @@ export interface TestUser {
   role: 'Admin' | 'Manager' | 'User' | 'Engineer';
 }
 
+/**
+ * Test user credentials
+ *
+ * Passwords can be overridden via environment variables:
+ * - QADMIN_PASSWORD: Bootstrap admin account (not a test account)
+ * - TEST_MANAGER_PASSWORD, TEST_ENGINEER_PASSWORD, TEST_USER_PASSWORD: Test accounts
+ */
 export const TEST_USERS = {
   admin: {
     email: 'qadmin@sim-rq.local',
-    password: 'admin123',
+    password: process.env.QADMIN_PASSWORD || 'admin123',
     name: 'qAdmin',
     role: 'Admin' as const,
   },
   manager: {
     email: 'bob@sim-rq.local',
-    password: 'manager123',
+    password: process.env.TEST_MANAGER_PASSWORD || 'manager123',
     name: 'Bob Manager',
     role: 'Manager' as const,
   },
   engineer: {
     email: 'charlie@sim-rq.local',
-    password: 'engineer123',
+    password: process.env.TEST_ENGINEER_PASSWORD || 'engineer123',
     name: 'Charlie Engineer',
     role: 'Engineer' as const,
   },
   user: {
     email: 'alice@sim-rq.local',
-    password: 'user123',
+    password: process.env.TEST_USER_PASSWORD || 'user123',
     name: 'Alice User',
     role: 'User' as const,
   },

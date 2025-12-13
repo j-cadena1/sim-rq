@@ -89,23 +89,28 @@ make clean        # Remove all containers
 
 ## Default Credentials (Development Only)
 
-**These credentials are for development and testing only.** In production, authentication should be handled exclusively through Microsoft Entra ID SSO.
+**Bootstrap Admin Account:**
 
-**Admin:**
+The `qadmin@sim-rq.local` account is used for initial SSO configuration only:
 
 - Email: `qadmin@sim-rq.local`
-- Password: `admin123`
+- Password: Set via `QADMIN_PASSWORD` in `.env` (default: `admin123`)
 
-**Test Accounts (for RBAC testing):**
+After configuring Entra ID and syncing Admin users, disable qAdmin via Settings > User Management.
+
+**Test Accounts (for RBAC testing in development):**
 
 - Manager: `bob@sim-rq.local` / `manager123`
 - Engineer: `charlie@sim-rq.local` / `engineer123`
 - User: `alice@sim-rq.local` / `user123`
 
+Test passwords can be overridden via environment variables. See `.env.example`.
+
 **⚠️ Production Deployment:**
 
-- Change the admin password immediately
+- Set a strong `QADMIN_PASSWORD` in `.env`
 - Configure Microsoft Entra ID SSO (see SSO Configuration section)
+- Disable qAdmin after SSO is configured
 - All real users should authenticate via SSO
 - Disable the local administrator account and delete local users
 
@@ -297,7 +302,7 @@ make test         # Unit tests (backend + frontend in containers)
 make test-e2e     # E2E tests (Playwright in container)
 ```
 
-**Test suite:** 509 tests total (86 E2E + 423 backend unit tests) covering auth, roles, requests, lifecycle, analytics, forms, navigation, and notifications.
+**Test suite:** 633 tests total (86 E2E + 124 frontend unit + 423 backend unit tests) covering auth, roles, requests, lifecycle, analytics, forms, navigation, and notifications.
 
 Test reports are saved to `./playwright-report/` and `./test-results/`.
 

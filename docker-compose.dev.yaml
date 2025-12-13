@@ -187,6 +187,7 @@ services:
       - ./index.tsx:/app/index.tsx:ro
       - ./index.css:/app/index.css:ro
       - ./vite.config.ts:/app/vite.config.ts:ro
+      - ./vitest.config.ts:/app/vitest.config.ts:ro
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./tests:/app/tests:ro
       - ./types.ts:/app/types.ts:ro

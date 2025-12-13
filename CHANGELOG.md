@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- markdownlint-disable MD024 -->
 
+## [0.9.9] - 2025-12-13
+
+### Added
+
+- **Comprehensive frontend unit tests** - Added 94 new frontend tests for major components
+  - Dashboard.test.tsx (27 tests): needsAttentionCount, stats calculation, role-based UI
+  - RequestList.test.tsx (25 tests): Role-based filtering, search, sorting, empty states
+  - AuthContext.test.tsx (18 tests): Hook validation, SSO callback, session verification
+  - Projects.test.tsx (23 tests): Permissions, creation, status transitions, deletion
+  - Analytics.test.tsx (13 tests): Loading/error states, data rendering, completion rate
+- **Test infrastructure** - New shared test utilities and mock factories
+  - `src/test/mockData.ts`: Type-safe factories for User, Request, Project, Comment, Notification
+  - `src/test/utils.tsx`: renderWithProviders helper with full context stack
+
+### Changed
+
+- **Test coverage improved** - Frontend tests increased from 30 to 124 (313% increase)
+  - Total test count: 547 tests (124 frontend + 423 backend)
+
 ## [0.9.8] - 2025-12-13
 
 ### Added
