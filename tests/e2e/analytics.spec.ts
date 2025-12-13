@@ -22,8 +22,8 @@ test.describe('Analytics Dashboard', () => {
     await page.goto('/#/analytics');
     await expect(page).toHaveURL(/\/#\/analytics/);
 
-    // Should see Analytics heading
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 10000 });
+    // Should see Analytics Dashboard heading (h1)
+    await expect(page.getByRole('heading', { name: 'Analytics Dashboard', level: 1 })).toBeVisible({ timeout: 10000 });
 
     // Should see date range filters
     await expect(page.locator('input[type="date"]').first()).toBeVisible();
@@ -31,7 +31,7 @@ test.describe('Analytics Dashboard', () => {
 
   test('should display request status distribution chart', async ({ page }) => {
     await page.goto('/#/analytics');
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Analytics Dashboard', level: 1 })).toBeVisible({ timeout: 10000 });
 
     // Look for chart-related text or elements
     // Charts usually have canvas elements or SVG
@@ -41,7 +41,7 @@ test.describe('Analytics Dashboard', () => {
 
   test('should allow changing date range', async ({ page }) => {
     await page.goto('/#/analytics');
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Analytics Dashboard', level: 1 })).toBeVisible({ timeout: 10000 });
 
     // Find date inputs
     const dateInputs = page.locator('input[type="date"]');
@@ -64,12 +64,13 @@ test.describe('Analytics Dashboard', () => {
 
   test('should display metrics cards', async ({ page }) => {
     await page.goto('/#/analytics');
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Analytics Dashboard', level: 1 })).toBeVisible({ timeout: 10000 });
 
-    // Look for common metric indicators (numbers, percentages, etc.)
-    // Analytics usually shows total requests, completion rates, etc.
+    // Check for metrics cards OR empty state message
+    // Fresh databases show "No analytics data yet" which is valid
     const hasMetrics = await page.locator('text=/\\d+|Total|Average|Rate/i').count();
-    expect(hasMetrics).toBeGreaterThan(0);
+    const hasEmptyState = await page.getByText('No analytics data yet').count();
+    expect(hasMetrics + hasEmptyState).toBeGreaterThan(0);
   });
 
   test('should be accessible to admin users', async ({ page }) => {
@@ -77,12 +78,12 @@ test.describe('Analytics Dashboard', () => {
 
     // Should not redirect to login or show error
     await expect(page).toHaveURL(/\/#\/analytics/);
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Analytics Dashboard', level: 1 })).toBeVisible({ timeout: 10000 });
   });
 
   test('should display data visualization elements', async ({ page }) => {
     await page.goto('/#/analytics');
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Analytics Dashboard', level: 1 })).toBeVisible({ timeout: 10000 });
 
     // Wait for any loading indicators to disappear
     await page.waitForTimeout(1000);
@@ -94,14 +95,14 @@ test.describe('Analytics Dashboard', () => {
 
   test('should have responsive layout', async ({ page }) => {
     await page.goto('/#/analytics');
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Analytics Dashboard', level: 1 })).toBeVisible({ timeout: 10000 });
 
     // Test at different viewport sizes
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Analytics Dashboard', level: 1 })).toBeVisible();
 
     await page.setViewportSize({ width: 768, height: 1024 });
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Analytics Dashboard', level: 1 })).toBeVisible();
 
     // Reset to default
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -120,6 +121,6 @@ test.describe('Analytics - Manager Access', () => {
     await expect(page).toHaveURL(/\/#\/analytics/);
 
     // Should see Analytics page
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Analytics Dashboard', level: 1 })).toBeVisible({ timeout: 10000 });
   });
 });
