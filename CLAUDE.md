@@ -137,20 +137,27 @@ Pending → Active → Completed → Archived
 backend/src/
 ├── controllers/     # Route handlers (requestsController, projectsController, authController)
 ├── routes/          # Express route definitions with Swagger docs
+│   └── cspReport.ts              # CSP violation reporting endpoint
 ├── services/        # Business logic - key services:
 │   ├── projectLifecycleService.ts  # Project state machine transitions
+│   ├── projectHoursService.ts      # Project hours allocation/tracking
 │   ├── sessionService.ts           # Session management with atomic locking
+│   ├── loginAttemptService.ts      # Login tracking and account lockout
 │   ├── storageService.ts           # S3-compatible file storage (Garage)
 │   ├── notificationService.ts      # In-app real-time notifications (WebSocket)
+│   ├── notificationCleanupService.ts # Notification cleanup jobs
 │   ├── websocketService.ts         # Socket.IO connection management
 │   ├── emailService.ts             # SMTP email sending (optional)
 │   ├── emailDigestService.ts       # Batched email digests (hourly/daily/weekly)
 │   ├── redisService.ts             # Redis connection (optional)
 │   ├── auditService.ts             # Audit log tracking
+│   ├── analyticsService.ts         # Analytics/reporting queries
+│   ├── metricsService.ts           # Prometheus metrics endpoint
 │   ├── msalService.ts              # Microsoft Entra ID PKCE auth
-│   ├── encryptionService.ts        # SSO credential encryption
+│   ├── encryptionService.ts        # SSO credential encryption (AES-256-GCM)
 │   ├── cleanupService.ts           # Session/token cleanup jobs
-│   └── mediaProcessingService.ts   # Video/image thumbnail generation
+│   ├── mediaProcessingService.ts   # Video/image thumbnail generation
+│   └── systemSettingsService.ts    # System-wide settings management
 ├── middleware/      # Auth, rate limiting, validation, logging
 └── db/              # Database connection pool
 ```
@@ -192,11 +199,35 @@ contexts/
 - Production: Use `ENTRA_SSO_*` environment variables or database configuration
 - PKCE state stored in database for multi-instance support
 
+### Security
+
+**Rate Limiting** (configured in `backend/src/middleware/rateLimiter.ts`):
+
+| Limiter | Window | Production Limit | Purpose |
+|---------|--------|------------------|---------|
+| `authLimiter` | 15 min | 30 | Login endpoints |
+| `ssoLimiter` | 15 min | 20 | SSO redirects |
+| `apiLimiter` | 15 min | 1,000 | General API |
+| `uploadLimiter` | 15 min | 20 | File uploads |
+| `sensitiveOpLimiter` | 1 hour | 30 | Password/session changes |
+| `cspReportLimiter` | 15 min | 100 | CSP violation reports |
+
+**Account Lockout**: 5 failed login attempts triggers 15-minute lockout (per email).
+
+**Security Headers** (Helmet.js):
+
+- Content-Security-Policy with strict `script-src 'self'`
+- CSP violations reported to `/api/csp-report`
+- HSTS with 1-year max-age and preload
+- X-Frame-Options: DENY
+
+**Password Requirements**: 12+ characters, mixed case, number, special character.
+
 ## Testing
 
-- **E2E tests**: `tests/e2e/` (13 spec files, 86 tests covering all major features)
-- **Frontend unit tests**: `components/*.test.tsx`, `contexts/*.test.tsx` (124 tests)
-- **Backend unit tests**: `backend/src/services/__tests__/` (423 tests)
+- **E2E tests**: `tests/e2e/` (13 spec files covering all major features)
+- **Frontend unit tests**: `components/*.test.tsx`, `contexts/*.test.tsx` (152 tests)
+- **Backend unit tests**: `backend/src/services/__tests__/`, `backend/src/controllers/__tests__/` (423 tests)
 - Rate limiting auto-disabled during `make test-e2e`
 - Test reports saved to `./playwright-report/` and `./test-results/`
 
