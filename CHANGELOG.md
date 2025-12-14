@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- markdownlint-disable MD024 -->
 
+## [0.10.0] - 2025-12-13
+
+### Security
+
+- **Authorization fixes** - Comprehensive security remediation addressing critical and high severity issues:
+  - Added role-based authorization to status update endpoint (Admin/Manager/Engineer only)
+  - Engineers can now only update status on requests assigned to them
+  - Added time entry authorization - users can only log time on assigned requests
+  - Changed lockout service from fail-open to fail-closed on database errors
+  - Added SSO redirect URL validation to prevent open redirects
+  - Added `SECURE_COOKIES` environment variable for HTTPS behind reverse proxy
+  - Added S3 cascade delete when requests are deleted (removes orphaned files)
+  - Changed Garage secrets default to `false` in production docker-compose
+  - Added PII masking for emails in authentication log messages
+  - Added CSV export limit (10,000 records max) to prevent DoS
+- **CSP violation reporting** - New `/api/csp-report` endpoint for browser CSP violation reports
+  - Rate-limited to prevent log spam attacks
+  - Sanitizes URIs to avoid logging sensitive query parameters
+  - Logs violations for security monitoring
+- **Rate limiting hardening** - Added `cspReportLimiter` (100 reports/15min in production)
+
+### Added
+
+- **SECURITY.md** - Comprehensive security documentation (260 lines)
+  - Vulnerability reporting policy with response timelines
+  - Authentication flow diagrams (local + SSO)
+  - Incident response runbook with SQL commands
+  - Penetration test scope definition
+  - Deployment security checklist
+  - Session management commands
+
+### Changed
+
+- **Test count updated** - 575 tests total (152 frontend + 423 backend)
+
 ## [0.9.9] - 2025-12-13
 
 ### Added
@@ -23,8 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Test coverage improved** - Frontend tests increased from 30 to 124 (313% increase)
-  - Total test count: 547 tests (124 frontend + 423 backend)
+- **Test coverage improved** - Frontend tests increased from 30 to 152 (407% increase)
+  - Total test count: 575 tests (152 frontend + 423 backend)
 
 ## [0.9.8] - 2025-12-13
 
@@ -366,6 +401,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Analytics dashboard tests
 - Navigation and UI tests
 
+[0.10.0]: https://github.com/j-cadena1/sim-rq/releases/tag/v0.10.0
+[0.9.9]: https://github.com/j-cadena1/sim-rq/releases/tag/v0.9.9
 [0.9.8]: https://github.com/j-cadena1/sim-rq/releases/tag/v0.9.8
 [0.9.7]: https://github.com/j-cadena1/sim-rq/releases/tag/v0.9.7
 [0.9.6]: https://github.com/j-cadena1/sim-rq/releases/tag/v0.9.6

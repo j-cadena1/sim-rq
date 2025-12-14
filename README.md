@@ -1,7 +1,7 @@
 # Sim RQ
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-0.9.8--beta-blue.svg)](https://github.com/j-cadena1/sim-rq/releases)
+[![Version](https://img.shields.io/badge/version-0.10.0--beta-blue.svg)](https://github.com/j-cadena1/sim-rq/releases)
 [![Docker](https://img.shields.io/badge/Docker-First-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
@@ -302,7 +302,7 @@ make test         # Unit tests (backend + frontend in containers)
 make test-e2e     # E2E tests (Playwright in container)
 ```
 
-**Test suite:** 633 tests total (86 E2E + 124 frontend unit + 423 backend unit tests) covering auth, roles, requests, lifecycle, analytics, forms, navigation, and notifications.
+**Test suite:** 661 tests total (86 E2E + 152 frontend unit + 423 backend unit tests) covering auth, roles, requests, lifecycle, analytics, forms, navigation, and notifications.
 
 Test reports are saved to `./playwright-report/` and `./test-results/`.
 
