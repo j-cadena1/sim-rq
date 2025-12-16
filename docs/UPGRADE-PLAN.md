@@ -107,11 +107,13 @@ make test-e2e               # Full E2E (82 passed, 4 conditionally skip)
 
 ---
 
-## Phase 4: Express 5 Migration
+## Phase 4: Express 5 Migration ✅ COMPLETE
+
+**Status:** Completed 2025-12-16 | Commit: `78cf9fa`
 
 **Risk: LOW** - Codebase already Express 5-ready
 
-**Package:** express 4.22.1 → 5.x
+**Package:** express 4.18.2 → 5.2.1, @types/express 4.17.21 → 5.0.6
 
 **Why low risk:**
 
@@ -239,8 +241,8 @@ make test-e2e               # Full E2E
 Phase 1: Redis 8           → Test → Commit  ✅ DONE (2f91939)
 Phase 2: Safe backend deps → Test → Commit  ✅ DONE (1a578b1)
 Phase 3: Zod 4             → Test → Commit  ✅ DONE (5532c63)
-Phase 4: Express 5         → Test → Commit  ⏳ NEXT
-Phase 5: Rate limiter 8    → Test → Commit
+Phase 4: Express 5         → Test → Commit  ✅ DONE (78cf9fa)
+Phase 5: Rate limiter 8    → Test → Commit  ⏳ NEXT
 Phase 6a: TypeScript 5.9   → Test → Commit
 Phase 6b: lucide-react     → Test → Commit
 Phase 6c: Vite 7           → Test → Commit
