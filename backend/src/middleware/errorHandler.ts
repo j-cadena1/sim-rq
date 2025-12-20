@@ -45,7 +45,7 @@ export const addRequestId: RequestHandler = (req, _res, next) => {
 function handleZodError(error: ZodError): AppError {
   const details: Record<string, string[]> = {};
 
-  error.errors.forEach((err) => {
+  error.issues.forEach((err) => {
     const path = err.path.join('.');
     if (!details[path]) {
       details[path] = [];
